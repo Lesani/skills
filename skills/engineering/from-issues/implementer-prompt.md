@@ -39,9 +39,10 @@ Agent tool (general-purpose):
 
     ## Working directory and branch
 
-    - Working directory: [absolute path to the worktree or main checkout]
-    - Branch: feat/issue-<N>-<slug>
-    - All commits go on this branch.
+    - Working directory: [absolute path — main checkout for sequential waves, the assigned throwaway worktree for parallel waves]
+    - Branch: feat/<feature-slug> (the shared feature branch — NOT a per-issue branch)
+    - All commits go on this branch with messages tagged `<type>: [#N] <subject>`.
+    - Do NOT create your own worktree, do NOT switch branches, do NOT push. The controller handles merge-back to the canonical feature branch after your wave completes.
 
     ## Before you begin
 

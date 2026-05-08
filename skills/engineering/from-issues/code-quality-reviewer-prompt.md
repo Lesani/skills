@@ -24,10 +24,10 @@ Agent tool (general-purpose):
 
     ## Branch and commits
 
-    - Branch: feat/issue-<N>-<slug>
-    - Base SHA: [commit before this issue's work]
-    - Head SHA: [latest commit on the branch]
-    - Working directory: [absolute path]
+    - Branch: feat/<feature-slug> (shared feature branch)
+    - Base SHA: [commit before this slice's work]
+    - Head SHA: [latest commit on the branch from this slice's implementer]
+    - Working directory: [absolute path — same worktree the implementer used; do NOT spin up your own]
 
     Diff to review:
         git diff <base-sha>..<head-sha>

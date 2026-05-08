@@ -107,15 +107,63 @@ For HITL issues, halt before dispatching the implementer. Present:
 
 Resume only on explicit approval. If `--include-hitl` was passed, skip the halt — but still print the brief so the user sees what's about to start.
 
-### 5. Set up workspace per issue
+### 5. Set up workspace — wave-based execution
 
-For each issue being executed:
+The skill executes a feature as a series of **waves**. A wave is a set of issues that can run concurrently because they don't touch the same code. Most waves are size 1 (sequential). Parallel waves are the exception, used only when independence is clear.
 
-1. Pick a branch name: `feat/issue-<N>-<slug>` where slug is a kebab-case of the title (truncated to ~40 chars).
-2. If running in parallel (K > 1), create a git worktree at `../<repo>-issue-<N>/` checked out to the new branch. If serial, just check out the new branch in the main worktree.
-3. Verify the branch isn't already in use.
+```
+                    feature branch (canonical)
+   ─── slice #13 ──────┬──── slice #16 ──── slice #18 ──── slice #19 ───►
+                       │                       ▲                ▲
+        wave of 1      │   wave of 2:          │  wave of 1     │
+                       └── worktree-A (#16) ───┘                │
+                       └── worktree-B (#17) ───┘                │
+                                                                │
+                                                          tip = unified
+                                                          state, ready
+                                                          for user test
+```
 
-Use the same conventions as `superpowers:using-git-worktrees` if available.
+#### Feature branch is the integration point
+
+Pick a branch name: `feat/<feature-slug>` derived from the parent PRD's title. Verify the branch isn't already in use, then create it from the user's current branch (the "base"). All slice commits land on this branch, tagged `<type>: [#N] <subject>`.
+
+The feature branch **tip** is the unified state. The skill ends there. The user tests, approves, and only then merges down to the base. The skill does **not** open a PR or merge to base autonomously.
+
+#### Worktree policy (read this before dispatching anything)
+
+A worktree is a duplicate checkout (gigabytes of disk on this repo). Spin one up **only** to let two or more agents write the filesystem **at the same time**. Never as a default isolation mechanism per agent.
+
+| Situation | Workspace |
+|---|---|
+| Sequential issue (wave size = 1) | Main worktree, on the feature branch. **No spinoff.** |
+| Parallel wave size K ≥ 2 on the same feature | K-1 throwaway worktrees + main worktree, all branched from the feature branch tip |
+| Spec / quality reviewer for a slice | Same worktree the implementer used — readers don't need their own worktree |
+| Merge / wave-finalize step | Main worktree only |
+
+**Anti-pattern that triggered this rewrite:** invoking the Agent tool with `isolation: "worktree"` for every dispatched agent, including sequential implementers and reviewers. That produces N worktrees for N agents and never merges them, leaving the canonical branch empty. Don't do this. Pass `isolation` only when the wave is genuinely parallel and the agent is one of the K concurrent implementers.
+
+#### Wave execution loop
+
+For each wave:
+
+1. **Plan the wave.** From the ready set, pick either one issue (sequential) or up to K independent issues (parallel; see independence heuristic in `references/orchestration.md`). When in doubt, prefer sequential.
+2. **Set up worktrees** (parallel waves only). Create K-1 throwaway worktrees at `../<repo>-wave-<N>-<slug>/`, each checked out on the feature branch at the current tip. The main worktree handles the K-th issue.
+3. **Dispatch implementers in one message** when parallel — multiple Agent tool calls in a single response, per `superpowers:dispatching-parallel-agents`. Sequential = one Agent call.
+4. **Per-slice review loop** runs in the same worktree the implementer wrote in (spec reviewer → fixes → quality reviewer → fixes). Don't merge until both reviews pass.
+5. **Merge the wave back to the feature branch.** The controller (this skill) does the merge directly in the main worktree:
+   - Fast-forward where possible (single-issue waves, or worktrees with disjoint files).
+   - Plain merge with `--no-ff` if you want a wave-boundary marker, but FF is fine.
+   - **On real conflict**: stop and either resolve in the controller (small conflicts) or dispatch a merge subagent with the conflicting hunks as context (large conflicts). Don't paper over conflicts.
+6. **Remove throwaway worktrees** with `git worktree remove` once their commits are on the feature branch. Don't accumulate them across waves.
+7. **Integration sanity pass** after merge: a quick re-run of the test suite (or a focused subset for the touched areas) on the merged feature branch tip. The per-slice reviews already vetted each slice in isolation; this catches cross-slice regressions only.
+8. **Recompute the ready set** and start the next wave, or finalize.
+
+#### When to use branch-per-issue (override)
+
+Branch-per-issue + one-PR-per-issue is the right shape only when issues are **genuinely independent** features or bug fixes, with no shared schema or modules. Heuristic: if any two issues touch the same source file non-trivially, they belong on the same feature branch.
+
+If the user explicitly asks for one PR per issue, honour it — but warn if the slices share infrastructure.
 
 ### 6. Per-issue execution loop
 
@@ -133,7 +181,7 @@ digraph per_issue {
     "Dispatch code quality reviewer (./code-quality-reviewer-prompt.md)" [shape=box];
     "Quality approved?" [shape=diamond];
     "Implementer fixes quality issues" [shape=box];
-    "Push branch + open PR + comment on issue" [shape=box];
+    "Merge wave to feature branch + comment on issue" [shape=box];
 
     "Dispatch implementer (./implementer-prompt.md)" -> "Status?";
     "Status?" -> "Provide context, re-dispatch" [label="NEEDS_CONTEXT / BLOCKED"];
@@ -146,7 +194,7 @@ digraph per_issue {
     "Dispatch code quality reviewer (./code-quality-reviewer-prompt.md)" -> "Quality approved?";
     "Quality approved?" -> "Implementer fixes quality issues" [label="no"];
     "Implementer fixes quality issues" -> "Dispatch code quality reviewer (./code-quality-reviewer-prompt.md)";
-    "Quality approved?" -> "Push branch + open PR + comment on issue" [label="yes"];
+    "Quality approved?" -> "Merge wave to feature branch + comment on issue" [label="yes"];
 }
 ```
 
@@ -156,22 +204,46 @@ The four implementer statuses (`DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, `B
 
 ### 7. Close the loop on the tracker
 
-Once code-quality review passes:
+#### After each slice's wave merges into the feature branch
 
-1. Push the branch.
-2. Open a PR (or merge request) referencing the issue. PR title = issue title. PR body summarizes what changed and links the issue (e.g. "Closes #N" if the tracker supports auto-close).
-3. Post a comment on the issue with: spec-review summary, code-quality-review summary, link to the PR, branch name. (See `references/issue-tracker-adapters.md` for the per-tracker comment commands.)
-4. **Do not close or modify the issue itself** — the PR merge handles closure (or the user closes it manually). This skill never destructively edits the parent issue.
+1. Slice commits on the feature branch must be tagged `<type>: [#N] <subject>` so the tracker picks up the cross-link.
+2. Push the feature branch (plain push; force-push only if you intentionally rebased).
+3. Post a comment on the issue with: spec-review summary, code-quality-review summary, the commit range that landed it (`abc123..def456` on `feat/<feature>`), and the feature branch name. (See `references/issue-tracker-adapters.md`.)
+4. **Do not open a PR.** Slices keep accumulating on the feature branch. The skill's terminal state is the feature branch tip — not a PR.
+5. **Do not close or modify the issue itself.** Auto-close happens when the user eventually merges the feature branch to base.
+
+#### After the final slice — stop, don't merge
+
+Once every slice has landed on the feature branch and the integration sanity pass is clean:
+
+1. Stop. Print a one-screen summary: feature branch name, tip SHA, list of issues with their commit ranges, what the user should test.
+2. Hand control back to the user with a clear "ready for testing" prompt. Do **not** open a PR, do **not** merge to base, do **not** push to a special integration remote — wait for the user to test and decide.
+3. The user's verification is the final HITL gate. Once they approve, they (or you, on their explicit instruction) merge the feature branch to the base they branched from.
+
+#### When the user wants per-issue PRs (override)
+
+If the user explicitly asks for one PR per issue, honour it. Branch-per-issue is the workspace shape and a rolling integration branch keeps merges sane. Only do this when asked — it's substantially more user-side work for cohesive features.
 
 ### 8. Continue or stop
 
 If the user invoked with no specific issue:
 
-- After completing one issue, re-evaluate the ready set (a freshly-merged issue may have unblocked others) and continue.
-- If `--parallel K`, kick off the next batch up to K.
-- Stop when the ready set is empty, when all remaining ready issues are HITL and the user hasn't passed `--include-hitl`, or when the user explicitly halts.
+- After each wave completes and merges back, re-evaluate the ready set (newly-merged work may unblock others) and start the next wave.
+- Stop when the ready set is empty (feature branch is at unified tip — see "After the final slice").
+- Stop when all remaining ready issues are HITL and the user hasn't passed `--include-hitl`.
+- Stop when the user explicitly halts.
 
 If the user passed `#N`, stop after that one issue completes (or fails / is gated).
+
+### HITL — minimum-necessary policy
+
+HITL halts cost the user attention. Use them only where they're load-bearing:
+
+- **Before a HITL-flagged issue dispatches** — design judgment that wasn't resolvable during triage / brainstorming.
+- **After a HITL-flagged issue's wave merges** — if the issue's nature is "human needs to verify something" (e.g. visual / UX), surface the result and wait.
+- **At the very end**, before handing the feature branch tip back for user testing.
+
+Do **not** halt between non-HITL waves. Do **not** halt for routine progress checkpoints. Implementation-relevant questions should already be answered by the issue body and parent PRD; if they're not, the issue wasn't ready and the skill shouldn't have started it.
 
 ## Model selection
 
@@ -192,7 +264,12 @@ The skill's controller (the model running this skill) chooses the model per impl
 - Dispatch parallel implementers in the **same** worktree.
 - Modify or close the parent issue (PRD).
 - Force-merge a PR that fails a review.
-- Skip the HITL gate when an issue is HITL-flagged unless the user passed `--include-hitl`.
+- **Create a worktree per dispatched agent.** Worktrees exist to parallelize concurrent writers, not to isolate every Agent call. Sequential implementers and all reviewers run in the existing worktree. Never pass `isolation: "worktree"` to the Agent tool as a default — only for the K concurrent implementers in a parallel wave.
+- **End a wave without merging the worktrees back to the feature branch.** Worktrees are throwaway scratch space; the canonical state lives on the feature branch. If you finish a wave and the feature branch tip hasn't moved, you forgot to merge.
+- Branch every issue off `main` when issues depend on each other's work — the final integration becomes an n-way merge with conflicts in every shared file. Use one feature branch for all slices of one feature.
+- Open one PR per issue when the issues are slices of a cohesive feature.
+- **Open a PR or merge to base autonomously at the end of a run.** The skill ends at the feature branch tip and surfaces it to the user. The user tests and decides.
+- Halt for HITL between routine non-HITL waves. HITL halts are for HITL-flagged issues and the final user-test handoff only.
 
 **If the implementer asks questions:** answer with full context (the issue body, parent PRD, surrounding code if needed) — don't hand-wave.
 
