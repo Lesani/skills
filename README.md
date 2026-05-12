@@ -10,23 +10,27 @@
 
 # Skills For Real Engineers
 
-My agent skills that I use every day to do real engineering - not vibe coding.
+> Fork of [`mattpocock/skills`](https://github.com/mattpocock/skills). Diverging — see [Divergences](#divergences-from-upstream) below. Caveman style preserved.
+
+Agent skills for real engineering — not vibe coding.
 
 Developing real applications is hard. Approaches like GSD, BMAD, and Spec-Kit try to help by owning the process. But while doing so, they take away your control and make bugs in the process hard to resolve.
 
-These skills are designed to be small, easy to adapt, and composable. They work with any model. They're based on decades of engineering experience. Hack around with them. Make them your own. Enjoy.
+These skills are designed to be small, easy to adapt, and composable. They work with any model. They're based on decades of engineering experience. Hack around with them. Make them your own.
 
-If you want to keep up with changes to these skills, and any new ones I create, you can join ~60,000 other devs on my newsletter:
+Upstream by Matt Pocock — his newsletter, where most of the original thinking lives, is here:
 
-[Sign Up To The Newsletter](https://www.aihero.dev/s/skills-newsletter)
+[Sign Up To Matt's Newsletter](https://www.aihero.dev/s/skills-newsletter)
 
 ## Quickstart (30-second setup)
 
 1. Run the skills.sh installer:
 
 ```bash
-npx skills@latest add mattpocock/skills
+npx skills@latest add Lesani/skills
 ```
+
+(Or `mattpocock/skills` for the upstream original.)
 
 2. Pick the skills you want, and which coding agents you want to install them on. **Make sure you select `/setup-matt-pocock-skills`**.
 
@@ -137,6 +141,15 @@ And crucially, [`/improve-codebase-architecture`](./skills/engineering/improve-c
 ### Summary
 
 Software engineering fundamentals matter more than ever. These skills are my best effort at condensing these fundamentals into repeatable practices, to help you ship the best apps of your career. Enjoy.
+
+## Divergences from upstream
+
+This fork is tuned for **fully-AFK autonomous execution** end-to-end — the whole `grill-me` → `to-prd` → `to-issues` → `from-issues` pipeline aims to produce issues an agent can ship without further human input.
+
+- **`to-issues`** — HITL is gated by a strict allow-list (physical hardware, external approval, decisions the PRD explicitly deferred). "Architectural decision" and "design review" are not HITL reasons; they're PRD bugs. AFK self-test required per slice. Triage labels named explicitly (`ready-for-agent` / `ready-for-human`).
+- **`to-prd`** — adds a structured "Decisions Deferred" section that maps 1:1 to HITL slices downstream. Reminder to walk the future slice list before finalizing.
+- **`grill-me`** — explicit goal framing ("lock every decision an autonomous implementer would otherwise ask"), end-of-grill sweep for unresolved decisions.
+- **New skills** — `update-skills-repo` (sync local edits to this repo from `~/.claude/skills/`).
 
 ## Reference
 
