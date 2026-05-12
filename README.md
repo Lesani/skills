@@ -1,13 +1,3 @@
-<p>
-  <a href="https://www.aihero.dev/s/skills-newsletter">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/total-typescript/image/upload/v1777382277/skills-repo-dark_2x.png">
-      <source media="(prefers-color-scheme: light)" srcset="https://res.cloudinary.com/total-typescript/image/upload/v1777382277/skill-repo-light_2x.png">
-      <img alt="Skills" src="https://res.cloudinary.com/total-typescript/image/upload/v1777382277/skill-repo-light_2x.png" width="369">
-    </picture>
-  </a>
-</p>
-
 # Skills For Real Engineers
 
 > Fork of [`mattpocock/skills`](https://github.com/mattpocock/skills). Diverging — see [Divergences](#divergences-from-upstream) below. Caveman style preserved.
@@ -40,6 +30,29 @@ npx skills@latest add Lesani/skills
    - Ask you where you want to save any docs we create
 
 4. Bam - you're ready to go.
+
+## Divergences from upstream
+
+This fork is tuned for **fully-AFK autonomous execution** end-to-end — the whole `grill-me` → `to-prd` → `to-issues` → `from-issues` pipeline aims to produce issues an agent can ship without further human input.
+
+- **`to-issues`** — HITL is gated by a strict allow-list (physical hardware, external approval, decisions the PRD explicitly deferred). "Architectural decision" and "design review" are not HITL reasons; they're PRD bugs. AFK self-test required per slice. Triage labels named explicitly (`ready-for-agent` / `ready-for-human`).
+- **`to-prd`** — adds a structured "Decisions Deferred" section that maps 1:1 to HITL slices downstream. Reminder to walk the future slice list before finalizing.
+- **`grill-me`** — explicit goal framing ("lock every decision an autonomous implementer would otherwise ask"), end-of-grill sweep for unresolved decisions.
+- **New skills** — `update-skills-repo` (sync local edits to this repo from `~/.claude/skills/`).
+
+---
+
+Below: the upstream README by Matt Pocock.
+
+<p>
+  <a href="https://www.aihero.dev/s/skills-newsletter">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://res.cloudinary.com/total-typescript/image/upload/v1777382277/skills-repo-dark_2x.png">
+      <source media="(prefers-color-scheme: light)" srcset="https://res.cloudinary.com/total-typescript/image/upload/v1777382277/skill-repo-light_2x.png">
+      <img alt="Skills" src="https://res.cloudinary.com/total-typescript/image/upload/v1777382277/skill-repo-light_2x.png" width="369">
+    </picture>
+  </a>
+</p>
 
 ## Why These Skills Exist
 
@@ -141,15 +154,6 @@ And crucially, [`/improve-codebase-architecture`](./skills/engineering/improve-c
 ### Summary
 
 Software engineering fundamentals matter more than ever. These skills are my best effort at condensing these fundamentals into repeatable practices, to help you ship the best apps of your career. Enjoy.
-
-## Divergences from upstream
-
-This fork is tuned for **fully-AFK autonomous execution** end-to-end — the whole `grill-me` → `to-prd` → `to-issues` → `from-issues` pipeline aims to produce issues an agent can ship without further human input.
-
-- **`to-issues`** — HITL is gated by a strict allow-list (physical hardware, external approval, decisions the PRD explicitly deferred). "Architectural decision" and "design review" are not HITL reasons; they're PRD bugs. AFK self-test required per slice. Triage labels named explicitly (`ready-for-agent` / `ready-for-human`).
-- **`to-prd`** — adds a structured "Decisions Deferred" section that maps 1:1 to HITL slices downstream. Reminder to walk the future slice list before finalizing.
-- **`grill-me`** — explicit goal framing ("lock every decision an autonomous implementer would otherwise ask"), end-of-grill sweep for unresolved decisions.
-- **New skills** — `update-skills-repo` (sync local edits to this repo from `~/.claude/skills/`).
 
 ## Reference
 
