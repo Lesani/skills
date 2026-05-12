@@ -23,7 +23,15 @@ If you have not already explored the codebase, do so to understand the current s
 
 Break the plan into **tracer bullet** issues. Each issue is a thin vertical slice that cuts through ALL integration layers end-to-end, NOT a horizontal slice of one layer.
 
-Slices may be 'HITL' or 'AFK'. HITL slices require human interaction, such as an architectural decision or a design review. AFK slices can be implemented and merged without human interaction. Prefer AFK over HITL where possible.
+Every slice is AFK by default. Mark HITL **only** if it meets one of:
+
+1. Requires physical hardware the agent can't drive (acceptance test on real device, plugging cables).
+2. Requires external approval (security, legal, product sign-off, production deploy).
+3. Resolves a decision the PRD's "Decisions Deferred" section explicitly left open.
+
+**Not HITL:** "architectural decision", "design review", "checkpoint", "validate the pattern". If you reach for these, fix the PRD instead.
+
+AFK self-test per slice: given PRD + this slice + codebase, could an agent finish without asking? If no, name the missing decision and either add it to the slice or escalate to fixing the PRD.
 
 <vertical-slice-rules>
 - Each slice delivers a narrow but COMPLETE path through every layer (schema, API, UI, tests)
@@ -36,7 +44,7 @@ Slices may be 'HITL' or 'AFK'. HITL slices require human interaction, such as an
 Present the proposed breakdown as a numbered list. For each slice, show:
 
 - **Title**: short descriptive name
-- **Type**: HITL / AFK
+- **Type**: HITL / AFK (each HITL needs a one-line **Why HITL:** citing the allow-list reason)
 - **Blocked by**: which other slices (if any) must complete first
 - **User stories covered**: which user stories this addresses (if the source material has them)
 
@@ -51,7 +59,7 @@ Iterate until the user approves the breakdown.
 
 ### 5. Publish the issues to the issue tracker
 
-For each approved slice, publish a new issue to the issue tracker. Use the issue body template below. These issues are considered ready for AFK agents, so publish them with the correct triage label unless instructed otherwise.
+For each approved slice, publish a new issue to the issue tracker using the body template below. Apply the triage label per slice type: AFK → `ready-for-agent`, HITL → `ready-for-human`.
 
 Publish issues in dependency order (blockers first) so you can reference real issue identifiers in the "Blocked by" field.
 

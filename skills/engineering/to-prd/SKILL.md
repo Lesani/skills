@@ -17,6 +17,8 @@ A deep module (as opposed to a shallow module) is one which encapsulates a lot o
 
 Check with the user that these modules match their expectations. Check with the user which modules they want tests written for.
 
+Before writing the PRD, walk the future slice list mentally. Every decision an implementer would otherwise ask becomes a future HITL. Resolve in the PRD, or list under "Decisions Deferred". Aim for that list to be empty.
+
 3. Write the PRD using the template below, then publish it to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage.
 
 <prd-template>
@@ -64,6 +66,12 @@ A list of testing decisions that were made. Include:
 - A description of what makes a good test (only test external behavior, not implementation details)
 - Which modules will be tested
 - Prior art for the tests (i.e. similar types of tests in the codebase)
+
+## Decisions Deferred
+
+Decisions intentionally left for implementation. Each one is a future HITL touchpoint. Aim for empty.
+
+Format: numbered, one line each, tagged `[hardware | approval | deferred]`. `to-issues` maps these 1:1 to HITL slices.
 
 ## Out of Scope
 
