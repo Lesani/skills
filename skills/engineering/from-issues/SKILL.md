@@ -34,7 +34,7 @@ digraph when_to_use {
 **Don't use this skill for:**
 - Issues still labeled `needs-triage` — run `triage` first.
 - Issues not yet broken into slices — run `to-prd` then `to-issues` first.
-- One-off tasks where there is no parent issue or PRD.
+- One-off tasks where there is no parent issue or PRD — for an in-conversation PRD or a handful of pasted issues, use `implement` (single agent, current session, current branch) instead.
 - Pure architecture / design work — that's an HITL discussion, not an executable issue.
 
 ## Inputs
@@ -294,3 +294,4 @@ The skill's controller (the model running this skill) chooses the model per impl
 - **superpowers:finishing-a-development-branch** — invoke after the last issue lands if you want a coordinated branch wrap-up.
 - **to-issues** / **to-prd** — produce the issues this skill consumes.
 - **triage** — run before this skill for any new `needs-triage` issues.
+- **implement** — the lightweight counterpart: no tracker, no waves, single session on the current branch. Use it when the PRD/issues are in the conversation rather than on the tracker.
