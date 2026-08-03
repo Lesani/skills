@@ -5,9 +5,9 @@ description: Tiered delegation workflow that reserves the top model for decision
 
 # Fable: design → fine-plan → implement
 
-The orchestrating model does only what only it can do — make and record
-decisions. Everything downstream is delegated: opus plans, opus/sonnet
-implements, the orchestrator reviews and verifies.
+The orchestrating model makes and records decisions.
+Everything downstream is delegated: opus plans, opus/sonnet implements.
+The orchestrator reviews and verifies.
 
 ## Phase 1 — Design (you, the main session; do NOT delegate this)
 
@@ -19,7 +19,7 @@ implements, the orchestrator reviews and verifies.
   domain language; an ADR when hard-to-reverse + surprising + real trade-off.
 - Write a rough-design doc to the scratchpad covering, per feature: user
   model / storage & model changes / architecture / wire protocol & UI /
-  testing approach / implementation order / shared agent constraints.
+  (testing approach, if applicable) / implementation order / shared agent constraints.
 - Commit the design docs before spawning any agents.
 
 ## Phase 2 — Fine planning (opus Plan agents)
