@@ -34,7 +34,12 @@ The project's domain model _informs_ this skill. The domain language gives names
 
 ### 1. Explore (you — do NOT delegate this)
 
-First read the project's domain glossary and the ADRs for the area you touch.
+**Scope before you scan — YAGNI.** A deepened module pays off when future changes to it become easier. So weight the parts of the codebase where change keeps landing. Decide *where* to look before you look:
+
+- If the user named a direction — a module, a subsystem, a pain point — take it and skip the inference below.
+- Otherwise, walk back through the commit history (`git log --oneline`) and find the hot spots: the files and areas that keep coming up. Read those paths first. If the changes are scattered and no hot spot stands out, widen the net.
+
+Read the project's domain glossary and the ADRs for the area you touch, if they exist.
 
 Then walk the codebase yourself with Read/Grep/Glob. Do not send Explore subagents and work from their summaries. You form the architectural judgment while you read the code firsthand. Explore organically and note where you experience friction:
 
