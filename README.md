@@ -1,8 +1,8 @@
-# Skills For Real Engineers
+# Skills for Autonomous Engineering
 
 > Fork of [`mattpocock/skills`](https://github.com/mattpocock/skills). Diverging — see [Divergences](#divergences-from-upstream) below. The upstream README is preserved [at the bottom](#upstream-readme).
 
-Agent skills for real engineering — not vibe coding.
+Agent skills for autonomous end-to-end engineering — grill, plan, delegate, ship.
 
 These skills are small, easy to adapt, and composable. They work with any model. Hack around with them. Make them your own.
 
