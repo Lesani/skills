@@ -37,9 +37,11 @@ Write only the requested text. No preamble, no summary, no closing remarks.
 ## Modes
 
 - **strict** — procedures, runbooks, safety text, error messages: apply every rule and both length caps.
-- **STE-flavored** — general prose (READMEs, PR descriptions, docs): apply the sentence, paragraph, active-voice, and no-phrasal-verb discipline; relax the ~900-word dictionary lockdown so the text keeps enough range to read naturally.
+- **STE-flavored** — general prose (READMEs, PR descriptions, docs): apply the sentence, paragraph, active-voice, and no-phrasal-verb discipline. Relax the ~900-word dictionary lockdown so the text keeps enough range to read naturally.
 
 ## Self-lint (run before returning text)
+
+A script automates the mechanical checks: `bash ~/source/repos/skills/scripts/ste-lint.sh <files>` (markdown prose, any artifact). Read its findings with judgment — a deliberate keep can overrule a rule.
 
 1. Any sentence over 20 words? Split it.
 2. Any semicolon? Replace with a period.
@@ -50,6 +52,6 @@ Write only the requested text. No preamble, no summary, no closing remarks.
 
 The mechanical rules above are lintable and are what removes slop. Full STE also needs human judgment (the right technical noun, whether a sentence "makes good sense") — a checker cannot certify that, and slop is not about that. This skill fixes the FORM of slop. It cannot make a hollow paragraph true.
 
-Free official standard (do not paste it in full; it is copyrighted): https://asd-ste100.org
+Free official standard (do not paste it in full — it is copyrighted): https://asd-ste100.org
 
 Source: [woosal1337/blog — ste-writing-skill.md](https://github.com/woosal1337/blog/blob/main/videos/ep01-the-cure-for-ai-slop/ste-writing-skill.md)
