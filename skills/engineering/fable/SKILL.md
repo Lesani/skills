@@ -15,6 +15,9 @@ The orchestrator reviews and verifies.
   architecture seam the feature lands on, wire protocol, UX shape.
 - Resolve ambiguities: ask the user if they are available. Otherwise adopt
   your recommendation and record it as a decision.
+- If a load-bearing interface is contested, design it twice. Spawn 3+ parallel
+  agents, each with a different design constraint, then judge the results — see
+  [DESIGN-IT-TWICE.md](../codebase-design/DESIGN-IT-TWICE.md).
 - Record decisions where they persist: CONTEXT.md glossary terms for new
   domain language. Write an ADR when a decision is hard to reverse,
   surprising, and a real trade-off.
