@@ -1,16 +1,10 @@
 # Skills For Real Engineers
 
-> Fork of [`mattpocock/skills`](https://github.com/mattpocock/skills). Diverging — see [Divergences](#divergences-from-upstream) below. Caveman style preserved.
+> Fork of [`mattpocock/skills`](https://github.com/mattpocock/skills). Diverging — see [Divergences](#divergences-from-upstream) below. The upstream README is preserved [at the bottom](#upstream-readme).
 
 Agent skills for real engineering — not vibe coding.
 
-Developing real applications is hard. Approaches like GSD, BMAD, and Spec-Kit try to help by owning the process. But while doing so, they take away your control and make bugs in the process hard to resolve.
-
-These skills are designed to be small, easy to adapt, and composable. They work with any model. They're based on decades of engineering experience. Hack around with them. Make them your own.
-
-Upstream by Matt Pocock — his newsletter, where most of the original thinking lives, is here:
-
-[Sign Up To Matt's Newsletter](https://www.aihero.dev/s/skills-newsletter)
+These skills are small, easy to adapt, and composable. They work with any model. Hack around with them. Make them your own.
 
 ## Quickstart (30-second setup)
 
@@ -35,14 +29,76 @@ npx skills@latest add Lesani/skills
 
 This fork is tuned for **fully-AFK autonomous execution** end-to-end — the whole `grill-me` → `to-prd` → `to-issues` → `from-issues` pipeline aims to produce issues an agent can ship without further human input.
 
-- **`to-issues`** — HITL is gated by a strict allow-list (physical hardware, external approval, decisions the PRD explicitly deferred). "Architectural decision" and "design review" are not HITL reasons; they're PRD bugs. AFK self-test required per slice. Triage labels named explicitly (`ready-for-agent` / `ready-for-human`).
+- **`to-issues`** — HITL is gated by a strict allow-list (physical hardware, external approval, decisions the PRD explicitly deferred). "Architectural decision" and "design review" are not HITL reasons. They are PRD bugs. AFK self-test required per slice. Triage labels named explicitly (`ready-for-agent` / `ready-for-human`).
 - **`to-prd`** — adds a structured "Decisions Deferred" section that maps 1:1 to HITL slices downstream. Reminder to walk the future slice list before finalizing.
 - **`grill-me`** — explicit goal framing ("lock every decision an autonomous implementer would otherwise ask"), end-of-grill sweep for unresolved decisions.
-- **New skills** — `update-skills-repo` (sync local edits to this repo from `~/.claude/skills/`).
+- **`improve-codebase-architecture`** — reworked into a read-plan-delegate workflow. The orchestrating session reads the codebase itself and writes committed rough plans (target interface, pseudocode, todos). Delegated opus/sonnet agents implement from those plans.
+- **New skills** — notably `fable` (tiered delegation: the top model decides, opus plans, opus/sonnet implements), `merge-down`, `setup-foundry-claude`, and the `sync-skills` / `update-skills-repo` pair that keeps `~/.claude/skills/` and this repo in sync.
+- **Scripts** — `scripts/ste-lint.sh`, a mechanical Simplified-Technical-English checker for any markdown prose artifact.
+
+## Reference
+
+### Engineering
+
+Skills for daily code work.
+
+- **[diagnose](./skills/engineering/diagnose/SKILL.md)** — Disciplined diagnosis loop for hard bugs and performance regressions: reproduce → minimise → hypothesise → instrument → fix → regression-test.
+- **[grill-with-docs](./skills/engineering/grill-with-docs/SKILL.md)** — Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates `CONTEXT.md` and ADRs inline.
+- **[triage](./skills/engineering/triage/SKILL.md)** — Triage issues through a state machine of triage roles.
+- **[improve-codebase-architecture](./skills/engineering/improve-codebase-architecture/SKILL.md)** — Find deepening opportunities in a codebase, informed by the domain language in `CONTEXT.md` and the decisions in `docs/adr/`. Plans each rework as a committed rough plan, then delegates the implementation to agents.
+- **[fable](./skills/engineering/fable/SKILL.md)** — Tiered delegation workflow that reserves the top model for decisions. The main session designs and records binding decisions, opus subagents do fine planning, opus/sonnet subagents implement.
+- **[code-review](./skills/engineering/code-review/SKILL.md)** — Review the changes since a fixed point along two axes — repo standards and spec compliance — in parallel sub-agents.
+- **[codebase-design](./skills/engineering/codebase-design/SKILL.md)** — Shared vocabulary for designing deep modules: interfaces, seams, adapters, leverage, locality.
+- **[domain-modeling](./skills/engineering/domain-modeling/SKILL.md)** — Build and sharpen a project's domain model: terminology, ubiquitous language, architectural decisions.
+- **[from-issues](./skills/engineering/from-issues/SKILL.md)** — Execute triaged issues end-to-end via subagents: implement, review twice, open a PR, report back to the issue.
+- **[implement](./skills/engineering/implement/SKILL.md)** — Implement a piece of work based on a PRD or set of issues.
+- **[merge-down](./skills/engineering/merge-down/SKILL.md)** — Merge feature branches and worktrees down into one integration branch, resolve the usual conflicts, then clean up.
+- **[research](./skills/engineering/research/SKILL.md)** — Investigate a question against high-trust primary sources and capture the findings as a Markdown file in the repo.
+- **[setup-matt-pocock-skills](./skills/engineering/setup-matt-pocock-skills/SKILL.md)** — Scaffold the per-repo config (issue tracker, triage label vocabulary, domain doc layout) that the other engineering skills consume. Run once per repo.
+- **[setup-foundry-claude](./skills/engineering/setup-foundry-claude/SKILL.md)** — PowerShell wrapper that runs Claude Code against Azure AI Foundry without leaking provider config into the rest of the shell session.
+- **[tdd](./skills/engineering/tdd/SKILL.md)** — Test-driven development with a red-green-refactor loop. Builds features or fixes bugs one vertical slice at a time.
+- **[to-issues](./skills/engineering/to-issues/SKILL.md)** — Break any plan, spec, or PRD into independently-grabbable GitHub issues using vertical slices.
+- **[to-prd](./skills/engineering/to-prd/SKILL.md)** — Turn the current conversation context into a PRD and submit it as a GitHub issue.
+- **[zoom-out](./skills/engineering/zoom-out/SKILL.md)** — Tell the agent to zoom out and give broader context or a higher-level perspective on an unfamiliar section of code.
+- **[prototype](./skills/engineering/prototype/SKILL.md)** — Build a throwaway prototype to flush out a design — either a runnable terminal app for state/business-logic questions, or several radically different UI variations toggleable from one route.
+
+### Productivity
+
+General workflow tools, not code-specific.
+
+- **[caveman](./skills/productivity/caveman/SKILL.md)** — Ultra-compressed communication mode. Cuts token usage ~75% by dropping filler while keeping full technical accuracy.
+- **[grill-me](./skills/productivity/grill-me/SKILL.md)** — Get relentlessly interviewed about a plan or design until every branch of the decision tree is resolved.
+- **[ste](./skills/productivity/ste/SKILL.md)** — Rewrite prose (docs, READMEs, PR text, error messages — never code) into ASD-STE100 Simplified Technical English to remove AI slop.
+- **[sync-skills](./skills/productivity/sync-skills/SKILL.md)** — Sync the local repo clone with `~/.claude/skills/` and surface uncommitted edits for push.
+- **[write-a-skill](./skills/productivity/write-a-skill/SKILL.md)** — Create new skills with proper structure, progressive disclosure, and bundled resources.
+
+### Misc
+
+Rarely used, kept around.
+
+- **[git-guardrails-claude-code](./skills/misc/git-guardrails-claude-code/SKILL.md)** — Set up Claude Code hooks to block dangerous git commands (push, reset --hard, clean, etc.) before they execute.
+- **[migrate-to-shoehorn](./skills/misc/migrate-to-shoehorn/SKILL.md)** — Migrate test files from `as` type assertions to @total-typescript/shoehorn.
+- **[scaffold-exercises](./skills/misc/scaffold-exercises/SKILL.md)** — Create exercise directory structures with sections, problems, solutions, and explainers.
+- **[setup-pre-commit](./skills/misc/setup-pre-commit/SKILL.md)** — Set up Husky pre-commit hooks with lint-staged, Prettier, type checking, and tests.
+
+### Other categories
+
+- **[personal](./skills/personal/README.md)** — skills tied to one machine's setup, not promoted in the plugin.
+- **[in-progress](./skills/in-progress/README.md)** — rough drafts, excluded from the plugin until they graduate.
+- **[deprecated](./skills/deprecated/README.md)** — no longer used, kept for reference.
+
+## Scripts
+
+- **`scripts/ste-lint.sh`** — mechanical STE checks (contractions, semicolons, British spellings, banned words, passive markers, sentence length) for any markdown prose artifact. Run it on explicit files. Judgment stays with the reader.
+- **`scripts/link-skills.sh`**, **`scripts/list-skills.sh`** — local setup helpers that symlink and list the installed skills.
 
 ---
 
-Below: the upstream README by Matt Pocock.
+## Upstream README
+
+Upstream by Matt Pocock — his newsletter, where most of the original thinking lives, is here:
+
+[Sign Up To Matt's Newsletter](https://www.aihero.dev/s/skills-newsletter)
 
 <p>
   <a href="https://www.aihero.dev/s/skills-newsletter">
@@ -54,11 +110,11 @@ Below: the upstream README by Matt Pocock.
   </a>
 </p>
 
-## Why These Skills Exist
+### Why These Skills Exist
 
 I built these skills as a way to fix common failure modes I see with Claude Code, Codex, and other coding agents.
 
-### #1: The Agent Didn't Do What I Want
+#### #1: The Agent Didn't Do What I Want
 
 > "No-one knows exactly what they want"
 >
@@ -75,7 +131,7 @@ This is just the same in the AI age. There is a communication gap between you an
 
 These are my most popular skills. They help you align with the agent before you get started, and think deeply about the change you're making. Use them _every_ time you want to make a change.
 
-### #2: The Agent Is Way Too Verbose
+#### #2: The Agent Is Way Too Verbose
 
 > With a ubiquitous language, conversations among developers and expressions of the code are all derived from the same domain model.
 >
@@ -112,7 +168,7 @@ It's hard to explain how powerful this is. It might be the single coolest techni
 > - As a result, the **codebase is easier to navigate** for the agent
 > - The agent also **spends fewer tokens on thinking**, because it has access to a more concise language
 
-### #3: The Code Doesn't Work
+#### #3: The Code Doesn't Work
 
 > "Always take small, deliberate steps. The rate of feedback is your speed limit. Never take on a task that’s too big."
 >
@@ -130,7 +186,7 @@ I've built a **[`/tdd`](./skills/engineering/tdd/SKILL.md) skill** you can slot 
 
 For debugging, I've also built a **[`/diagnose`](./skills/engineering/diagnose/SKILL.md)** skill that wraps best debugging practices into a simple loop.
 
-### #4: We Built A Ball Of Mud
+#### #4: We Built A Ball Of Mud
 
 > "Invest in the design of the system _every day_."
 >
@@ -154,38 +210,3 @@ And crucially, [`/improve-codebase-architecture`](./skills/engineering/improve-c
 ### Summary
 
 Software engineering fundamentals matter more than ever. These skills are my best effort at condensing these fundamentals into repeatable practices, to help you ship the best apps of your career. Enjoy.
-
-## Reference
-
-### Engineering
-
-Skills I use daily for code work.
-
-- **[diagnose](./skills/engineering/diagnose/SKILL.md)** — Disciplined diagnosis loop for hard bugs and performance regressions: reproduce → minimise → hypothesise → instrument → fix → regression-test.
-- **[grill-with-docs](./skills/engineering/grill-with-docs/SKILL.md)** — Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates `CONTEXT.md` and ADRs inline.
-- **[triage](./skills/engineering/triage/SKILL.md)** — Triage issues through a state machine of triage roles.
-- **[improve-codebase-architecture](./skills/engineering/improve-codebase-architecture/SKILL.md)** — Find deepening opportunities in a codebase, informed by the domain language in `CONTEXT.md` and the decisions in `docs/adr/`.
-- **[setup-matt-pocock-skills](./skills/engineering/setup-matt-pocock-skills/SKILL.md)** — Scaffold the per-repo config (issue tracker, triage label vocabulary, domain doc layout) that the other engineering skills consume. Run once per repo before using `to-issues`, `to-prd`, `triage`, `diagnose`, `tdd`, `improve-codebase-architecture`, or `zoom-out`.
-- **[tdd](./skills/engineering/tdd/SKILL.md)** — Test-driven development with a red-green-refactor loop. Builds features or fixes bugs one vertical slice at a time.
-- **[to-issues](./skills/engineering/to-issues/SKILL.md)** — Break any plan, spec, or PRD into independently-grabbable GitHub issues using vertical slices.
-- **[to-prd](./skills/engineering/to-prd/SKILL.md)** — Turn the current conversation context into a PRD and submit it as a GitHub issue. No interview — just synthesizes what you've already discussed.
-- **[zoom-out](./skills/engineering/zoom-out/SKILL.md)** — Tell the agent to zoom out and give broader context or a higher-level perspective on an unfamiliar section of code.
-- **[prototype](./skills/engineering/prototype/SKILL.md)** — Build a throwaway prototype to flush out a design — either a runnable terminal app for state/business-logic questions, or several radically different UI variations toggleable from one route.
-
-### Productivity
-
-General workflow tools, not code-specific.
-
-- **[caveman](./skills/productivity/caveman/SKILL.md)** — Ultra-compressed communication mode. Cuts token usage ~75% by dropping filler while keeping full technical accuracy.
-- **[grill-me](./skills/productivity/grill-me/SKILL.md)** — Get relentlessly interviewed about a plan or design until every branch of the decision tree is resolved.
-- **[ste](./skills/productivity/ste/SKILL.md)** — Rewrite prose (docs, READMEs, PR text, error messages — never code) into ASD-STE100 Simplified Technical English to remove AI slop.
-- **[write-a-skill](./skills/productivity/write-a-skill/SKILL.md)** — Create new skills with proper structure, progressive disclosure, and bundled resources.
-
-### Misc
-
-Tools I keep around but rarely use.
-
-- **[git-guardrails-claude-code](./skills/misc/git-guardrails-claude-code/SKILL.md)** — Set up Claude Code hooks to block dangerous git commands (push, reset --hard, clean, etc.) before they execute.
-- **[migrate-to-shoehorn](./skills/misc/migrate-to-shoehorn/SKILL.md)** — Migrate test files from `as` type assertions to @total-typescript/shoehorn.
-- **[scaffold-exercises](./skills/misc/scaffold-exercises/SKILL.md)** — Create exercise directory structures with sections, problems, solutions, and explainers.
-- **[setup-pre-commit](./skills/misc/setup-pre-commit/SKILL.md)** — Set up Husky pre-commit hooks with lint-staged, Prettier, type checking, and tests.

@@ -6,3 +6,4 @@ General workflow tools, not code-specific.
 - **[grill-me](./grill-me/SKILL.md)** — Get relentlessly interviewed about a plan or design until every branch of the decision tree is resolved.
 - **[ste](./ste/SKILL.md)** — Rewrite prose (docs, READMEs, PR text, error messages — never code) into ASD-STE100 Simplified Technical English to remove AI slop.
 - **[write-a-skill](./write-a-skill/SKILL.md)** — Create new skills with proper structure, progressive disclosure, and bundled resources.
+- **[sync-skills](./sync-skills/SKILL.md)** — Sync the local repo clone with `~/.claude/skills/` and surface uncommitted edits for push.
