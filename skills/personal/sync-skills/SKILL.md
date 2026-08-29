@@ -5,17 +5,17 @@ description: Sync the local lesani/skills clone with what's installed under ~/.c
 
 # Sync Skills
 
-Keeps the cloned `skills` repo (default `~/.claude/skills-repos/lesani-skills`) and the active install at `~/.claude/skills/` aligned. **The repo is the source of truth.** Anything in `~/.claude/skills/` that doesn't exist in the repo is treated as a candidate to *promote up* to the repo, not as something to keep.
+Keeps the cloned `skills` repo (default `~/repos/skills`) and the active install at `~/.claude/skills/` aligned. **The repo is the source of truth.** Anything in `~/.claude/skills/` that doesn't exist in the repo is treated as a candidate to *promote up* to the repo, not as something to keep.
 
 This is intentionally thin — six steps, no plumbing. If something is unclear at any step, stop and ask the user.
 
 ## Step 1 — Locate the repo
 
-Default to `~/.claude/skills-repos/lesani-skills`. If absent, check `~/.claude/skills-repos/` for a differently-named clone, then ask the user where it lives (or offer `gh repo clone Lesani/skills ~/.claude/skills-repos/lesani-skills`).
+Default to `~/repos/skills`. If absent, look for another clone under `~/repos/` or `~/.claude/skills-repos/`, then ask the user where it lives (or offer `gh repo clone Lesani/skills ~/repos/skills`).
 
 Confirm it's the right repo: `git -C <path> remote -v` should show `Lesani/skills` (or the user's fork).
 
-The clone is typically **shallow** (`.git/shallow` present, only a commit or two of history). That's fine for syncing, but don't expect `git log` to explain where a file originally came from.
+Check for `.git/shallow`. A shallow clone syncs fine, but `git log` will not explain where a file came from. A full clone (the usual case here) will.
 
 ## Step 2 — Pull
 
@@ -36,6 +36,16 @@ bash <repo>/scripts/link-skills.sh
 ```
 
 It creates one symlink per skill in `~/.claude/skills/<name>/` pointing at `<repo>/skills/<category>/<name>/`. The category folders flatten — Claude only looks at skill names. It includes `in-progress/` and skips only `deprecated/`. It is idempotent (`ln -sfn`), so re-running it is a safe no-op that also repairs drift.
+
+**It also overwrites links that point outside this repo.** `obsidian-vault` is the standing case: it lives in `~/repos/homelab/skills/obsidian-vault` because it names a private vault, and the linker has no way to know that. Before running the script, record any link whose target is not under the repo:
+
+```bash
+for l in ~/.claude/skills/*; do
+  t="$(readlink "$l")"; case "$t" in "$REPO"/*) ;; *) echo "$l -> $t";; esac
+done
+```
+
+Re-point those afterwards with `ln -sfn`, and verify. If the repo also carries a stale copy of that skill, say so — deleting it from the repo is what stops the fight recurring.
 
 Because every skill is a symlink, **Step 2's pull already updated their contents**. There is no per-file copy, compare, or "Updated vs Identical" bookkeeping to do. The only thing this step changes is the *set* of links:
 
