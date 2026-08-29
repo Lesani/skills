@@ -1,0 +1,23 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "lesani-skills",
+  "description": "Agent skills for autonomous end-to-end engineering, plus writing and productivity tools. A diverging fork of mattpocock/skills.",
+  "owner": {
+    "name": "Lesani",
+    "url": "https://github.com/Lesani"
+  },
+  "plugins": [
+    {
+      "name": "autonomous-engineering",
+      "description": "Agent skills for autonomous end-to-end engineering — grill, plan, delegate, ship. The grill-me → to-prd → to-issues → from-issues pipeline aims to produce issues an agent can ship without further human input, alongside diagnosis, TDD, review, architecture and prose skills.",
+      "author": {
+        "name": "Lesani",
+        "url": "https://github.com/Lesani"
+      },
+      "category": "development",
+      "source": "./",
+      "homepage": "https://github.com/Lesani/skills",
+      "license": "MIT"
+    }
+  ]
+}

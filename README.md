@@ -8,6 +8,21 @@ These skills are small, easy to adapt, and composable. They work with any model.
 
 ## Quickstart (30-second setup)
 
+### Claude Code plugin (recommended)
+
+```bash
+claude plugin marketplace add Lesani/skills
+claude plugin install autonomous-engineering@lesani-skills
+```
+
+Pull updates later with `claude plugin marketplace update lesani-skills` and
+`claude plugin update autonomous-engineering` (restart Claude Code to apply).
+`claude plugin details autonomous-engineering` shows the skill inventory and its
+projected token cost. The plugin ships `engineering`, `productivity` and `misc`
+— `personal`, `in-progress` and `deprecated` stay out.
+
+### Any other agent (skills.sh installer)
+
 1. Run the skills.sh installer:
 
 ```bash
@@ -24,6 +39,13 @@ npx skills@latest add Lesani/skills
    - Ask you where you want to save any docs we create
 
 4. Bam - you're ready to go.
+
+### Working on the skills themselves
+
+`scripts/link-skills.sh` symlinks every skill (including `in-progress`) into
+`~/.claude/skills/`, so a `git pull` here updates them in place and edits made
+while using a skill land straight back in this working copy. Use this instead of
+the plugin if you intend to send changes back.
 
 ## Divergences from upstream
 
