@@ -1,26 +1,32 @@
 ---
 name: setup-foundry-claude
-description: Set up a PowerShell wrapper that launches Claude Code against Azure AI Foundry without leaking provider config into the rest of the shell session, pin the model aliases to current models, and add a ccstatusline badge showing when an override endpoint is active. Use when Claude Code should run against Foundry, when `opus`/`sonnet` resolve to older models than expected, or when a provider wrapper contaminates later `claude` runs in the same terminal.
+description: Set up a shell wrapper that launches Claude Code against Azure AI Foundry without leaking provider config into the rest of the shell session, pin the model aliases to current models, and add a ccstatusline badge showing when an override endpoint is active. Covers PowerShell (Windows) and bash/zsh (Linux/macOS). Use when Claude Code should run against Foundry, when `opus`/`sonnet` resolve to older models than expected, or when a provider wrapper contaminates later `claude` runs in the same terminal.
 ---
 
 # Foundry Wrapper for Claude Code
 
 ## What This Sets Up
 
-- **`foundry_claude`** — a PowerShell function launching Claude Code against Azure AI Foundry
-- **`Invoke-Claude`** — a helper that scopes provider env vars to a single run instead of the whole shell
+- **`foundry_claude`** — a shell function launching Claude Code against Azure AI Foundry
+- **`Invoke-Claude`** / **`claude_run`** — a helper that scopes provider env vars to a single run instead of the whole shell
 - **Model alias pinning** so `opus`/`sonnet`/`haiku`/`fable` resolve to current models
 - **A ccstatusline badge** that appears only when an override endpoint is in use
+
+Each step below gives both a **PowerShell (Windows)** and a **bash / zsh (Linux, macOS)** variant. Do only the one for your shell.
 
 ## The Two Problems This Solves
 
 ### 1. Env vars leak into the whole shell session
 
-`$env:X = "..."` inside a PowerShell function is **not** scoped to that function. It writes to the process environment of the entire shell and persists until the window closes.
+**PowerShell**: `$env:X = "..."` inside a function is **not** scoped to that function. It writes to the process environment of the entire shell and persists until the window closes.
 
 So a naive wrapper permanently flips the shell into Foundry mode, and every later `claude` in that terminal silently inherits it. With several wrappers (Foundry, a proxy, a third-party endpoint) they also contaminate each other.
 
 Fix: clear every managed variable, apply only this run's config, restore on exit.
+
+**bash / zsh**: the same trap exists — `export X=1` inside a function writes to the shell's own environment and outlives the function. But POSIX shells have a better tool: `env -u VAR ... VAR=val command` builds the child's environment directly, so nothing is ever set in the parent. No save/restore, no cleanup path to get wrong, and the wrapper cannot leak even if it's interrupted.
+
+The prefix form alone (`X=1 claude`) is *not* enough — it adds variables but doesn't clear ones already exported in the shell. The `-u` flags are what make switching wrappers safe.
 
 ### 2. Alias defaults lag behind released models
 
@@ -53,7 +59,9 @@ done
 
 Pin only models that come back `[OK]`.
 
-### 3. Add the wrapper to the PowerShell profile
+### 3. Add the wrapper to the shell profile
+
+#### PowerShell (Windows)
 
 Write to `$PROFILE` (typically `~/Documents/PowerShell/Microsoft.PowerShell_profile.ps1`). Back up the existing profile first.
 
@@ -120,19 +128,83 @@ function foundry_claude {
 }
 ```
 
-Plain `claude` needs no wrapper. Once `foundry_claude` exits the environment is already restored.
+#### bash / zsh (Linux, macOS)
 
-**Adding more wrappers later**: give each its own `Config` hashtable and add any new variable it sets to `$script:ClaudeEnvKeys`. A variable missing from that list is a variable that can leak.
+Write to `~/.bashrc` (bash) or `~/.zshrc` (zsh). Back up the existing file first.
+
+```bash
+# Every variable any claude wrapper touches. claude_run unsets all of them for the
+# child process, so switching wrappers in one shell can never inherit the previous config.
+CLAUDE_ENV_KEYS=(
+  ANTHROPIC_BASE_URL
+  ANTHROPIC_AUTH_TOKEN
+  ANTHROPIC_API_KEY
+  API_TIMEOUT_MS
+  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC
+  CLAUDE_CODE_USE_FOUNDRY
+  ANTHROPIC_FOUNDRY_API_KEY
+  ANTHROPIC_FOUNDRY_RESOURCE
+  ANTHROPIC_FOUNDRY_BASE_URL
+  ANTHROPIC_DEFAULT_OPUS_MODEL
+  ANTHROPIC_DEFAULT_SONNET_MODEL
+  ANTHROPIC_DEFAULT_HAIKU_MODEL
+  ANTHROPIC_DEFAULT_FABLE_MODEL
+)
+
+FOUNDRY_KEY=""                       # fill in locally, never commit
+FOUNDRY_RESOURCE=""                  # e.g. my-foundry-resource
+
+# claude_run VAR=VAL ... -- <command> [args]
+# Builds the child environment directly: nothing is ever set in this shell.
+claude_run() {
+  local -a scrub=() config=()
+  local k
+  for k in "${CLAUDE_ENV_KEYS[@]}"; do scrub+=(-u "$k"); done
+  while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do config+=("$1"); shift; done
+  [ "$#" -gt 0 ] && shift
+  env "${scrub[@]}" "${config[@]}" "$@"
+}
+
+foundry_claude() {
+  claude_run \
+    ANTHROPIC_FOUNDRY_API_KEY="$FOUNDRY_KEY" \
+    ANTHROPIC_FOUNDRY_RESOURCE="$FOUNDRY_RESOURCE" \
+    CLAUDE_CODE_USE_FOUNDRY=1 \
+    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+    ANTHROPIC_DEFAULT_OPUS_MODEL=claude-opus-5 \
+    ANTHROPIC_DEFAULT_SONNET_MODEL=claude-sonnet-5 \
+    ANTHROPIC_DEFAULT_HAIKU_MODEL=claude-haiku-4-5 \
+    ANTHROPIC_DEFAULT_FABLE_MODEL=claude-fable-5 \
+    -- claude "$@"
+}
+```
+
+`env` execs a program found on `PATH`, so `claude` must be a real binary or shim — not a shell alias or function. `type claude` should print a path. If yours is an alias, drop to `command claude` inside a subshell instead, or point `claude_run` at the resolved path.
+
+Plain `claude` needs no wrapper on either platform. Nothing was set in the shell, so there is nothing to undo when `foundry_claude` exits.
+
+**Adding more wrappers later**: give each its own config block and add any new variable it sets to `$script:ClaudeEnvKeys` / `CLAUDE_ENV_KEYS`. A variable missing from that list is a variable that can leak.
 
 ### 4. Check the profile parses
+
+**PowerShell:**
 
 ```bash
 pwsh -NoProfile -Command '$e=$null; $null=[System.Management.Automation.Language.Parser]::ParseFile("<PROFILE_PATH>",[ref]$null,[ref]$e); if($e){$e|%{$_.Message}}else{"[OK] syntax valid"}'
 ```
 
+**bash / zsh:**
+
+```bash
+bash -n ~/.bashrc && echo "[OK] syntax valid"     # bash
+zsh  -n ~/.zshrc  && echo "[OK] syntax valid"     # zsh
+```
+
 ### 5. Add the ccstatusline provider badge (optional)
 
-Config lives at `~/.config/ccstatusline/settings.json`. Add as the **first** widget of the first line so it reads as a prefix:
+Config lives at `~/.config/ccstatusline/settings.json` on every platform. Add as the **first** widget of the first line so it reads as a prefix.
+
+**Windows** — the widget runs through `cmd.exe`, so use `cmd` syntax:
 
 ```json
 {
@@ -144,23 +216,54 @@ Config lives at `~/.config/ccstatusline/settings.json`. Add as the **first** wid
 }
 ```
 
+**Linux / macOS** — the widget runs through `/bin/sh`, so use POSIX shell syntax. The trailing `|| true` is load-bearing:
+
+```json
+{
+  "id": "<uuid>",
+  "type": "custom-command",
+  "commandPath": "[ -n \"$CLAUDE_CODE_USE_FOUNDRY\" ] && echo FOUNDRY || true",
+  "timeout": 3000,
+  "bold": true
+}
+```
+
 How it behaves:
 
-- ccstatusline trims command output and **hides widgets that render empty**, so `echo.` in the default branch means a normal session looks untouched. The badge appears only when you're *not* on the standard endpoint — the direction worth being warned about.
-- The widget runs via `execSync` with `env: process.env`, so it sees the environment Claude Code was launched with. On Windows that goes through `cmd.exe`, so use `cmd` syntax (`if defined ...`), not bash or PowerShell.
-- On timeout it renders a visible `[Timeout]`. A `cmd` spawn is ~40 ms, so `3000` leaves ample headroom.
+- ccstatusline trims command output and **hides widgets that render empty**, so a normal session looks untouched. The badge appears only when you're *not* on the standard endpoint — the direction worth being warned about.
+- The widget runs via `execSync` with `env: process.env`, so it sees the environment Claude Code was launched with.
+- **A non-zero exit renders a visible `[Exit: N]`, not an empty string.** On Windows both `cmd` branches exit 0, so the naive form is safe. On Linux/macOS `[ -n "$X" ] && echo FOUNDRY` exits **1** when the variable is unset, and the status line shows a permanent `[Exit: 1]` instead of hiding. `|| true` is what forces exit 0 in the empty branch.
+- On timeout it renders `[Timeout]`. A shell spawn is a few tens of ms, so `3000` leaves ample headroom.
 
 Widget fields are top-level, not nested under `metadata`: `commandPath`, `timeout`, `maxWidth`, `preserveColors`.
 
+To test a badge without restarting a session, feed ccstatusline a status-line JSON payload on stdin:
+
+```bash
+echo '{"model":{"display_name":"Opus 5"},"workspace":{"current_dir":"/tmp"},"session_id":"x","transcript_path":"/dev/null"}' \
+  | CLAUDE_CODE_USE_FOUNDRY=1 ccstatusline
+```
+
 ### 6. Verify
 
-Run a headless one-shot in a shell scrubbed of the Foundry variables, and confirm both the model resolution and the cleanup:
+Run a headless one-shot in a shell scrubbed of the Foundry variables, and confirm both the model resolution and the cleanup.
+
+**PowerShell:**
 
 ```powershell
 . $PROFILE
 "BEFORE: [$env:CLAUDE_CODE_USE_FOUNDRY]"
 foundry_claude -p "Reply with only your exact model ID, nothing else." --model opus
 "AFTER:  [$env:CLAUDE_CODE_USE_FOUNDRY]"
+```
+
+**bash / zsh:**
+
+```bash
+source ~/.bashrc                      # or ~/.zshrc
+echo "BEFORE: [$CLAUDE_CODE_USE_FOUNDRY]"
+foundry_claude -p "Reply with only your exact model ID, nothing else." --model opus
+echo "AFTER:  [$CLAUDE_CODE_USE_FOUNDRY]"
 ```
 
 - [ ] The model ID printed is the pinned model, not an older generation
@@ -173,5 +276,6 @@ To confirm which model a subagent really used, ask it directly — the Agent too
 ## Notes
 
 - Claude Code reads these variables **once at launch**. Changing them mid-session has no effect; restart.
-- A real key in the profile is plaintext on disk. One `$script:FoundryKey` line makes it a single place to swap for a credential-store lookup or rotate.
+- A real key in the profile is plaintext on disk. One `$script:FoundryKey` / `FOUNDRY_KEY` line makes it a single place to swap for a credential-store lookup or rotate.
 - If a Powerline theme is active, it assigns colors by visible-widget index, so everything shifts one slot when the badge shows. Empty widgets consume no slot, so default sessions are unaffected. Set `preserveColors` and emit your own ANSI codes if you want the badge pinned to a fixed color.
+- On a distro with no system `node` (immutable images like Bazzite), ccstatusline installed via bun needs a launcher shim on `PATH` that runs the CLI under bun, and `statusLine.command` in `~/.claude/settings.json` should point at that shim.
