@@ -8,6 +8,7 @@ Skills for daily code work.
 - **[improve-codebase-architecture](./improve-codebase-architecture/SKILL.md)** — Find deepening opportunities in a codebase, informed by the domain language in `CONTEXT.md` and the decisions in `docs/adr/`. Plans each rework as a committed rough plan, then delegates the implementation to agents.
 - **[fable](./fable/SKILL.md)** — Tiered delegation workflow that reserves the top model for decisions. The main session designs and records binding decisions, opus subagents do fine planning, opus/sonnet subagents implement.
 - **[code-review](./code-review/SKILL.md)** — Review the changes since a fixed point along two axes — repo standards and spec compliance — in parallel sub-agents.
+- **[red-team](./red-team/SKILL.md)** — Take apart any target — an app, a feature, a plan, a decision — with parallel adversarial agents, then kill the weak findings in a blue-team rebuttal pass. Only the survivors reach the user.
 - **[codebase-design](./codebase-design/SKILL.md)** — Shared vocabulary for designing deep modules: interfaces, seams, adapters, leverage, locality.
 - **[domain-modeling](./domain-modeling/SKILL.md)** — Build and sharpen a project's domain model: terminology, ubiquitous language, architectural decisions.
 - **[from-issues](./from-issues/SKILL.md)** — Execute triaged issues end-to-end via subagents: implement, review twice, open a PR, report back to the issue.

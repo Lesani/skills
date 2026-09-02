@@ -84,6 +84,7 @@ Skills for daily code work.
 - **[zoom-out](./skills/engineering/zoom-out/SKILL.md)** — Tell the agent to zoom out and give broader context or a higher-level perspective on an unfamiliar section of code.
 - **[prototype](./skills/engineering/prototype/SKILL.md)** — Build a throwaway prototype to flush out a design — either a runnable terminal app for state/business-logic questions, or several radically different UI variations toggleable from one route.
 - **[wizard](./skills/engineering/wizard/SKILL.md)** — Generate an interactive bash wizard that walks a human through steps only they can perform: credentials, CI secrets, third-party dashboards, one-off migrations.
+- **[red-team](./skills/engineering/red-team/SKILL.md)** — Take apart any target — an app, a feature, a plan, a decision — with parallel adversarial agents, then kill the weak findings in a blue-team rebuttal pass. Only the survivors reach the user.
 
 ### Productivity
 
