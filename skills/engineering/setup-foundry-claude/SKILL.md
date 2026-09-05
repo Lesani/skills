@@ -11,7 +11,7 @@ description: Set up a shell wrapper that launches Claude Code against Azure AI F
 - **`Invoke-Claude`** / **`claude_run`** — a helper that scopes provider env vars to a single run instead of the whole shell
 - **Model alias pinning** so `opus`/`sonnet`/`haiku`/`fable` resolve to current models
 - **A ccstatusline badge** that appears only when an override endpoint is in use
-- **Optional: other providers on the same resource** — a loopback LiteLLM proxy translating Anthropic Messages for GPT-class deployments, so `/model gpt-5` works inside one Claude Code session (step 7)
+- **Optional: other providers on the same resource** — a loopback LiteLLM proxy translating Anthropic Messages for GPT-class and other deployments, with launch-time profiles for what the aliases resolve to (step 7, full procedure in [`litellm-setup.md`](./litellm-setup.md))
 
 Each step below gives both a **PowerShell (Windows)** and a **bash / zsh (Linux, macOS)** variant. Do only the one for your shell.
 
@@ -278,54 +278,29 @@ To confirm which model a subagent really used, ask it directly — the Agent too
 
 Claude Code speaks only the Anthropic Messages format. To use GPT-class or other
 deployments on the same Foundry resource, put a LiteLLM proxy on loopback and
-point Claude Code at it with `ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN`.
-Claude deployments go through it too, so one session can switch models freely.
+point Claude Code at it. Claude deployments go through it too, so one session
+can switch models freely, and **profiles** decide what `opus/sonnet/haiku/fable`
+resolve to (asked with `gum` at launch, or `--profile X`).
 
-Bundled next to this file, ready to copy into `~/.config/foundry-claude/`:
+**Follow [`litellm-setup.md`](./litellm-setup.md)** — a complete install
+procedure with prerequisites, the resource-vs-project trap, how to read the
+deployment list, the three catalogue entry shapes, verification runs, launcher
+and badge, and a troubleshooting table. The files it installs are bundled here:
 
 | File | Role |
 |---|---|
-| [`foundry_claude`](./foundry_claude) | the wrapper as a **script** on `PATH` (a function can't be called from a desktop launcher). Asks for a **profile** with `gum` on a tty (`anthropic` or `openai`: what `opus/sonnet/haiku/fable` resolve to), `--profile X` / `FOUNDRY_PROFILE` skip the question, non-tty defaults to `anthropic`; `--direct` bypasses the proxy; `proxy up\|down\|reload\|status\|logs\|probe` manages it |
-| [`compose.yaml`](./compose.yaml) | `ghcr.io/berriai/litellm` bound to `127.0.0.1:4000`, healthcheck, restart policy |
-| [`litellm.yaml`](./litellm.yaml) | model catalogue: `claude-*` → `azure_ai/<id>` on the `/anthropic` base, OpenAI deployments → `azure/responses/<deployment>` on `<resource>.openai.azure.com`, other providers → `azure_ai/<deployment>` on the resource root |
+| [`foundry_claude`](./foundry_claude) | the wrapper as a **script** on `PATH`; profiles, `--direct`, `proxy up\|down\|reload\|status\|logs\|probe` |
+| [`compose.yaml`](./compose.yaml) | `ghcr.io/berriai/litellm` bound to `127.0.0.1:4000`, healthcheck, derived upstream URLs |
+| [`litellm.yaml`](./litellm.yaml) | model catalogue template: `claude-*` → `azure_ai/`, OpenAI → `azure/responses/`, others → `azure_ai/` |
 | [`env.example`](./env.example) | resource, key, generated master key — `chmod 600`, never committed |
 
-```bash
-mkdir -p ~/.config/foundry-claude && cp compose.yaml litellm.yaml ~/.config/foundry-claude/
-cp env.example ~/.config/foundry-claude/.env && chmod 600 ~/.config/foundry-claude/.env   # then fill it in
-install -m 755 foundry_claude ~/.local/bin/foundry_claude
-foundry_claude proxy probe          # lists deployments, sends a request through every catalogue entry
-```
+The three facts that cost the most time when this was first built: the
+`.env` value is the *resource*, not the *project*; OpenAI deployments only work
+on the Responses route, and the small probe request does not reveal that; and
+`litellm.yaml` is read once at start, so edits need `proxy reload`.
 
-Rules that came out of building it:
-
-- **Pin only what `probe` returns `[OK]`.** The name after `azure_ai/` is the Foundry *deployment name*, not the catalogue name, and Foundry has no startup model check — a wrong pin fails at the first prompt. The deployment list comes from `https://<resource>.openai.azure.com/openai/deployments?api-version=2023-03-15-preview` with the `api-key` header; the `/openai/v1/models` endpoint lists the catalogue, not your deployments.
-- **`FOUNDRY_RESOURCE` is the resource, not the project.** A Foundry project endpoint looks like `https://<resource>.services.ai.azure.com/api/projects/<project>`; the value you want is `<resource>`. The script also accepts the full host. A project name in that field shows up as NXDOMAIN on the first request.
-- **OpenAI deployments must use the Responses API route** (`azure/responses/<deployment>`, `api_version: preview`). On chat completions Azure answers `Function tools with reasoning_effort are not supported … use /v1/responses`, which only shows up once Claude Code sends tools — the 4-token probe passes either way. The Responses route handled tool calls plus adaptive thinking in testing; the Foundry Models endpoint (`azure_ai/`) stayed fine for non-OpenAI providers such as Kimi.
-- **A profile is just a set of alias pins.** `pins <profile>` emits `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU,FABLE}_MODEL` plus `ANTHROPIC_MODEL=opus`, so `--model opus`, `/model sonnet` and subagents declared with `model: haiku` all land on the profile's deployments. `[claude-code:unrecognized_model]` on stderr for a non-Claude id is informational.
-- **`litellm.yaml` is read once at start.** `proxy reload` (and `probe`, which calls it) restarts the container; `proxy up` alone does not pick up catalogue edits.
-- **Set `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1` on the proxy path.** A session can switch to a non-Claude upstream at any time, and those reject the beta tool-schema fields with `400`. `drop_params: true` in `litellm_settings` covers the body fields LiteLLM can't translate.
-- **Non-Claude models never show in the `/model` picker.** Gateway model discovery keeps only ids containing `claude` or `anthropic`. Type `/model gpt-5`; it works.
-- **Bearer, not x-api-key.** LiteLLM reads `Authorization: Bearer <master key>`, so the wrapper sets `ANTHROPIC_AUTH_TOKEN`, which also takes precedence over a saved claude.ai login without a prompt. A wrong token gets `400` from LiteLLM, not `401`.
-- **Add every new variable to the scrub list.** The script's `CLAUDE_ENV_KEYS` grew to include `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS` and the badge variable — anything missing there is a variable that can leak between wrappers.
-- **Socket-activated docker needs an on-demand starter.** `docker compose up -d --wait` in the wrapper is idempotent and also boots the daemon; nothing has to run at login.
-- Remote Control and voice dictation are off in a gateway session (they need a claude.ai identity).
-
-**Badge**: with two wrappers, key the ccstatusline widget on one variable both set — the bundled script exports `CLAUDE_PROVIDER_BADGE` (`FOUNDRY` or `FOUNDRY/LITELLM`) and the widget is `[ -n "$CLAUDE_PROVIDER_BADGE" ] && echo "$CLAUDE_PROVIDER_BADGE" || true`.
-
-**Launcher entry** (Omarchy / any XDG desktop): a script on `PATH` is all a `.desktop` file needs.
-
-```bash
-omarchy tui install "Foundry Claude" foundry_claude tile https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/claude-ai.png
-# generic: Exec=xdg-terminal-exec --app-id=TUI.tile -e foundry_claude ; add Path=<project dir> to choose the start directory
-```
-
-Verify the proxy path the same way as step 6, then confirm a non-Claude model answers:
-
-```bash
-foundry_claude --profile openai -p "Use the Bash tool to run: uname -r. Reply with only the output." --model opus --allowedTools Bash
-sudo docker logs foundry-litellm 2>&1 | grep 'POST /v1/messages'   # one line per request with upstream status
-```
+When this path is installed, steps 3–6 above are covered by the script — the
+shell-function wrapper is only needed where a script on `PATH` is not wanted.
 
 ## Notes
 
