@@ -11,6 +11,7 @@ services:
     environment:
       AZURE_AI_API_BASE: https://${FOUNDRY_HOST}
       AZURE_AI_ANTHROPIC_BASE: https://${FOUNDRY_HOST}/anthropic
+      AZURE_OPENAI_BASE: https://${FOUNDRY_RESOURCE_SHORT}.openai.azure.com
       LITELLM_LOG: WARNING
     volumes:
       - ./litellm.yaml:/app/config.yaml:ro

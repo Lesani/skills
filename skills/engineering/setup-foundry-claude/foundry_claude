@@ -1,9 +1,10 @@
 #!/bin/bash
 # foundry_claude — Claude Code against Azure AI Foundry, every model on Foundry.
 #
-#   foundry_claude [claude args...]        via local LiteLLM proxy (Claude + other providers)
-#   foundry_claude --direct [claude args]  straight to Foundry's Anthropic endpoint (Claude only)
-#   foundry_claude proxy up|down|status|logs|probe
+#   foundry_claude [claude args...]                 asks for a profile (gum), then runs via the LiteLLM proxy
+#   foundry_claude --profile anthropic|openai ...   skip the question (FOUNDRY_PROFILE=… does the same)
+#   foundry_claude --direct [claude args]           straight to Foundry's Anthropic endpoint (Claude only)
+#   foundry_claude proxy up|down|reload|status|logs|probe
 #
 # Nothing is exported into the calling shell: the child environment is built with
 # `env -u ...`, so a plain `claude` afterwards still uses the claude.ai subscription.
@@ -39,7 +40,7 @@ load_env() {
   # shown under "Endpoints and keys". Normalise to a host and hand it to compose.
   FOUNDRY_HOST="${FOUNDRY_RESOURCE#https://}"; FOUNDRY_HOST="${FOUNDRY_HOST%%/*}"
   case "$FOUNDRY_HOST" in *.*) ;; "") ;; *) FOUNDRY_HOST="$FOUNDRY_HOST.services.ai.azure.com" ;; esac
-  printf 'FOUNDRY_HOST=%s\n' "$FOUNDRY_HOST" > "$CONF_DIR/compose.env"
+  printf 'FOUNDRY_HOST=%s\nFOUNDRY_RESOURCE_SHORT=%s\n' "$FOUNDRY_HOST" "${FOUNDRY_HOST%%.*}" > "$CONF_DIR/compose.env"
 }
 
 need_creds() {
@@ -54,6 +55,13 @@ proxy_up() {
   dc up -d --wait --quiet-pull >/dev/null 2>&1 || { dc up -d --wait; }
 }
 
+proxy_reload() {
+  # litellm.yaml is read once at start; a config edit needs a restart.
+  dc up -d >/dev/null 2>&1 || true
+  dc restart >/dev/null 2>&1
+  dc up -d --wait >/dev/null 2>&1 || { dc up -d --wait; }
+}
+
 claude_bin() {
   local c
   c=$(command -v claude 2>/dev/null || true)
@@ -62,13 +70,41 @@ claude_bin() {
   printf '%s' "$c"
 }
 
-# Pinned aliases; override per model in .env with FOUNDRY_{OPUS,SONNET,HAIKU,FABLE}_MODEL.
-pins() {
+# Profiles: what the opus/sonnet/haiku/fable aliases resolve to. Every target
+# must be a model_name in litellm.yaml. Override a single alias in .env with
+# FOUNDRY_<PROFILE>_<ALIAS>_MODEL, e.g. FOUNDRY_OPENAI_OPUS_MODEL=gpt-5.6-terra.
+PROFILES=(anthropic openai)
+
+pins() {  # pins <profile>
+  local P; P=$(printf '%s' "$1" | tr '[:lower:]' '[:upper:]')
+  local o s h f
+  case "$1" in
+    anthropic) o=claude-opus-5;  s=claude-sonnet-5;  h=claude-haiku-4-5; f=claude-fable-5-1 ;;
+    openai)    o=gpt-5.6-sol;    s=gpt-5.6-terra;    h=gpt-5.6-luna;     f=gpt-6-astra ;;
+    *) die "unknown profile '$1' (${PROFILES[*]})" ;;
+  esac
+  local vo vs vh vf
+  vo="FOUNDRY_${P}_OPUS_MODEL"; vs="FOUNDRY_${P}_SONNET_MODEL"; vh="FOUNDRY_${P}_HAIKU_MODEL"; vf="FOUNDRY_${P}_FABLE_MODEL"
+  o="${!vo:-$o}"; s="${!vs:-$s}"; h="${!vh:-$h}"; f="${!vf:-$f}"
   printf '%s\n' \
-    "ANTHROPIC_DEFAULT_OPUS_MODEL=${FOUNDRY_OPUS_MODEL:-claude-opus-5}" \
-    "ANTHROPIC_DEFAULT_SONNET_MODEL=${FOUNDRY_SONNET_MODEL:-claude-sonnet-5}" \
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL=${FOUNDRY_HAIKU_MODEL:-claude-haiku-4-5}" \
-    "ANTHROPIC_DEFAULT_FABLE_MODEL=${FOUNDRY_FABLE_MODEL:-claude-fable-5-1}"
+    "ANTHROPIC_DEFAULT_OPUS_MODEL=$o" \
+    "ANTHROPIC_DEFAULT_SONNET_MODEL=$s" \
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL=$h" \
+    "ANTHROPIC_DEFAULT_FABLE_MODEL=$f" \
+    "ANTHROPIC_MODEL=opus"
+}
+
+pick_profile() {  # --profile X | FOUNDRY_PROFILE | interactive gum | anthropic
+  if [ -n "${FOUNDRY_PROFILE:-}" ]; then printf '%s' "$FOUNDRY_PROFILE"; return; fi
+  if [ -t 0 ] && [ -t 1 ] && command -v gum >/dev/null; then
+    gum choose --header "foundry_claude — model profile" \
+      --cursor.foreground 3 --header.foreground 6 \
+      "anthropic  (opus→claude-opus-5, sonnet→claude-sonnet-5, haiku→claude-haiku-4-5, fable→claude-fable-5-1)" \
+      "openai     (opus→gpt-5.6-sol, sonnet→gpt-5.6-terra, haiku→gpt-5.6-luna, fable→gpt-6-astra)" \
+      | awk '{print $1}'
+    return
+  fi
+  printf 'anthropic'
 }
 
 run_claude() {  # run_claude VAR=VAL ... -- [claude args]
@@ -82,7 +118,7 @@ run_claude() {  # run_claude VAR=VAL ... -- [claude args]
 
 probe() {
   need_creds
-  proxy_up
+  proxy_reload
   echo "== Endpoint: https://$FOUNDRY_HOST =="
   getent hosts "$FOUNDRY_HOST" >/dev/null || die "$FOUNDRY_HOST does not resolve — copy the host from Endpoints and keys"
   echo "== Deployments on the resource (deployment name -> model) =="
@@ -115,46 +151,59 @@ print(re.sub(r"\s+"," ",msg)[:200])' 2>/dev/null)"
     fi
   done
   echo
-  echo "Pin only [OK] entries. Aliases: opus/sonnet/haiku/fable -> see \`pins\` in $(realpath "$0")."
+  echo "Keep only [OK] entries. Alias targets per profile: \`pins\` in $(realpath "$0")."
+  local pr; for pr in "${PROFILES[@]}"; do printf '  %-10s %s\n' "$pr" "$(pins "$pr" | sed 's/ANTHROPIC_DEFAULT_//; s/_MODEL=/=/' | tr '\n' ' ')"; done
 }
 
 main() {
+  local profile="" direct=0
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --profile)   profile="$2"; shift 2 ;;
+      --profile=*) profile="${1#--profile=}"; shift ;;
+      --direct)    direct=1; shift ;;
+      *) break ;;
+    esac
+  done
   case "${1:-}" in
     proxy)
       load_env
       case "${2:-}" in
         up)     proxy_up; echo "proxy listening on $PROXY_URL" ;;
         down)   dc down ;;
+        reload) proxy_reload; echo "proxy reloaded" ;;
         status) dc ps ;;
         logs)   dc logs -f --tail=100 ;;
         probe)  probe ;;
-        *)      die "usage: foundry_claude proxy up|down|status|logs|probe" ;;
+        *)      die "usage: foundry_claude proxy up|down|reload|status|logs|probe" ;;
       esac
-      ;;
-    --direct)
-      shift; load_env; need_creds
-      mapfile -t p < <(pins)
-      run_claude \
-        CLAUDE_CODE_USE_FOUNDRY=1 \
-        ANTHROPIC_FOUNDRY_BASE_URL="https://$FOUNDRY_HOST/anthropic" \
-        ANTHROPIC_FOUNDRY_API_KEY="$AZURE_AI_API_KEY" \
-        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
-        CLAUDE_PROVIDER_BADGE="FOUNDRY" \
-        "${p[@]}" -- "$@"
-      ;;
-    *)
-      load_env; need_creds; proxy_up
-      mapfile -t p < <(pins)
-      # Experimental betas off: a session can switch to a non-Claude model at any
-      # time, and those upstreams reject the beta tool-schema fields with 400.
-      run_claude \
-        ANTHROPIC_BASE_URL="$PROXY_URL" \
-        ANTHROPIC_AUTH_TOKEN="$LITELLM_MASTER_KEY" \
-        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
-        CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1 \
-        CLAUDE_PROVIDER_BADGE="FOUNDRY/LITELLM" \
-        "${p[@]}" -- "$@"
+      return
       ;;
   esac
+  load_env; need_creds
+  if [ "$direct" = 1 ]; then
+    # Native Foundry integration: Claude deployments only, so the profile is fixed.
+    mapfile -t p < <(pins anthropic)
+    run_claude \
+      CLAUDE_CODE_USE_FOUNDRY=1 \
+      ANTHROPIC_FOUNDRY_BASE_URL="https://$FOUNDRY_HOST/anthropic" \
+      ANTHROPIC_FOUNDRY_API_KEY="$AZURE_AI_API_KEY" \
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+      CLAUDE_PROVIDER_BADGE="FOUNDRY" \
+      "${p[@]}" -- "$@"
+  fi
+  [ -n "$profile" ] || profile=$(pick_profile)
+  [ -n "$profile" ] || die "no profile chosen"
+  mapfile -t p < <(pins "$profile")
+  proxy_up
+  # Experimental betas off: a session can switch to a non-Claude model at any
+  # time, and those upstreams reject the beta tool-schema fields with 400.
+  run_claude \
+    ANTHROPIC_BASE_URL="$PROXY_URL" \
+    ANTHROPIC_AUTH_TOKEN="$LITELLM_MASTER_KEY" \
+    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+    CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1 \
+    CLAUDE_PROVIDER_BADGE="FOUNDRY/$(printf '%s' "$profile" | tr '[:lower:]' '[:upper:]')" \
+    "${p[@]}" -- "$@"
 }
 main "$@"

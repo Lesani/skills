@@ -285,9 +285,9 @@ Bundled next to this file, ready to copy into `~/.config/foundry-claude/`:
 
 | File | Role |
 |---|---|
-| [`foundry_claude`](./foundry_claude) | the wrapper as a **script** on `PATH` (a function can't be called from a desktop launcher); `--direct` bypasses the proxy, `proxy up\|down\|status\|logs\|probe` manages it |
+| [`foundry_claude`](./foundry_claude) | the wrapper as a **script** on `PATH` (a function can't be called from a desktop launcher). Asks for a **profile** with `gum` on a tty (`anthropic` or `openai`: what `opus/sonnet/haiku/fable` resolve to), `--profile X` / `FOUNDRY_PROFILE` skip the question, non-tty defaults to `anthropic`; `--direct` bypasses the proxy; `proxy up\|down\|reload\|status\|logs\|probe` manages it |
 | [`compose.yaml`](./compose.yaml) | `ghcr.io/berriai/litellm` bound to `127.0.0.1:4000`, healthcheck, restart policy |
-| [`litellm.yaml`](./litellm.yaml) | model catalogue: `claude-*` → `azure_ai/<id>` on the `/anthropic` base, others → `azure_ai/<deployment>` on the resource root |
+| [`litellm.yaml`](./litellm.yaml) | model catalogue: `claude-*` → `azure_ai/<id>` on the `/anthropic` base, OpenAI deployments → `azure/responses/<deployment>` on `<resource>.openai.azure.com`, other providers → `azure_ai/<deployment>` on the resource root |
 | [`env.example`](./env.example) | resource, key, generated master key — `chmod 600`, never committed |
 
 ```bash
@@ -301,6 +301,9 @@ Rules that came out of building it:
 
 - **Pin only what `probe` returns `[OK]`.** The name after `azure_ai/` is the Foundry *deployment name*, not the catalogue name, and Foundry has no startup model check — a wrong pin fails at the first prompt. The deployment list comes from `https://<resource>.openai.azure.com/openai/deployments?api-version=2023-03-15-preview` with the `api-key` header; the `/openai/v1/models` endpoint lists the catalogue, not your deployments.
 - **`FOUNDRY_RESOURCE` is the resource, not the project.** A Foundry project endpoint looks like `https://<resource>.services.ai.azure.com/api/projects/<project>`; the value you want is `<resource>`. The script also accepts the full host. A project name in that field shows up as NXDOMAIN on the first request.
+- **OpenAI deployments must use the Responses API route** (`azure/responses/<deployment>`, `api_version: preview`). On chat completions Azure answers `Function tools with reasoning_effort are not supported … use /v1/responses`, which only shows up once Claude Code sends tools — the 4-token probe passes either way. The Responses route handled tool calls plus adaptive thinking in testing; the Foundry Models endpoint (`azure_ai/`) stayed fine for non-OpenAI providers such as Kimi.
+- **A profile is just a set of alias pins.** `pins <profile>` emits `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU,FABLE}_MODEL` plus `ANTHROPIC_MODEL=opus`, so `--model opus`, `/model sonnet` and subagents declared with `model: haiku` all land on the profile's deployments. `[claude-code:unrecognized_model]` on stderr for a non-Claude id is informational.
+- **`litellm.yaml` is read once at start.** `proxy reload` (and `probe`, which calls it) restarts the container; `proxy up` alone does not pick up catalogue edits.
 - **Set `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1` on the proxy path.** A session can switch to a non-Claude upstream at any time, and those reject the beta tool-schema fields with `400`. `drop_params: true` in `litellm_settings` covers the body fields LiteLLM can't translate.
 - **Non-Claude models never show in the `/model` picker.** Gateway model discovery keeps only ids containing `claude` or `anthropic`. Type `/model gpt-5`; it works.
 - **Bearer, not x-api-key.** LiteLLM reads `Authorization: Bearer <master key>`, so the wrapper sets `ANTHROPIC_AUTH_TOKEN`, which also takes precedence over a saved claude.ai login without a prompt. A wrong token gets `400` from LiteLLM, not `401`.
@@ -320,7 +323,7 @@ omarchy tui install "Foundry Claude" foundry_claude tile https://cdn.jsdelivr.ne
 Verify the proxy path the same way as step 6, then confirm a non-Claude model answers:
 
 ```bash
-foundry_claude -p "Reply with only your exact model ID." --model gpt-5
+foundry_claude --profile openai -p "Use the Bash tool to run: uname -r. Reply with only the output." --model opus --allowedTools Bash
 sudo docker logs foundry-litellm 2>&1 | grep 'POST /v1/messages'   # one line per request with upstream status
 ```
 

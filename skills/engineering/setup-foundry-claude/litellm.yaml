@@ -2,15 +2,16 @@
 # resource in .env. `model_name` is what you type at /model or --model.
 #
 #   claude-*  -> Foundry's Anthropic endpoint (native Messages API, no translation)
-#   anything else -> Foundry Models inference endpoint (OpenAI-compatible; LiteLLM
-#                    translates Anthropic Messages <-> chat completions)
+#   gpt-*     -> Azure OpenAI Responses API on <resource>.openai.azure.com (LiteLLM translates).
+#                Chat-completions is NOT usable: Azure rejects function tools + reasoning_effort there.
+#   others    -> Foundry Models inference endpoint (OpenAI-compatible chat completions)
 #
 # Run `foundry_claude proxy probe` after editing: it lists the deployments the
 # resource serves and sends a 4-token request through every entry below.
 # Keep only what comes back [OK]; a missing deployment fails at first prompt.
 
 model_list:
-  # ---- Claude on Foundry (aliases opus/sonnet/haiku/fable are pinned to these) ----
+  # ---- Claude on Foundry ----
   - model_name: claude-opus-5
     litellm_params:
       model: azure_ai/claude-opus-5
@@ -26,36 +27,64 @@ model_list:
       model: azure_ai/claude-haiku-4-5
       api_base: os.environ/AZURE_AI_ANTHROPIC_BASE
       api_key: os.environ/AZURE_AI_API_KEY
+  - model_name: claude-fable-5-1
+    litellm_params:
+      model: azure_ai/claude-fable-5-1
+      api_base: os.environ/AZURE_AI_ANTHROPIC_BASE
+      api_key: os.environ/AZURE_AI_API_KEY
   - model_name: claude-fable-5
     litellm_params:
       model: azure_ai/claude-fable-5
       api_base: os.environ/AZURE_AI_ANTHROPIC_BASE
       api_key: os.environ/AZURE_AI_API_KEY
+  - model_name: claude-opus-4-8
+    litellm_params:
+      model: azure_ai/claude-opus-4-8
+      api_base: os.environ/AZURE_AI_ANTHROPIC_BASE
+      api_key: os.environ/AZURE_AI_API_KEY
+  - model_name: claude-sonnet-4-5
+    litellm_params:
+      model: azure_ai/claude-sonnet-4-5
+      api_base: os.environ/AZURE_AI_ANTHROPIC_BASE
+      api_key: os.environ/AZURE_AI_API_KEY
 
-  # ---- Other providers on the same Foundry resource ----
-  # The name after azure_ai/ must equal the *deployment name* in Foundry.
-  - model_name: gpt-5
+  # ---- OpenAI deployments (Responses API) ----
+  - model_name: gpt-5-your-deployment
     litellm_params:
-      model: azure_ai/gpt-5
+      model: azure/responses/gpt-5-your-deployment
+      api_base: os.environ/AZURE_OPENAI_BASE
+      api_version: preview
+      api_key: os.environ/AZURE_AI_API_KEY
+  - model_name: gpt-5-mini-your-deployment
+    litellm_params:
+      model: azure/responses/gpt-5-mini-your-deployment
+      api_base: os.environ/AZURE_OPENAI_BASE
+      api_version: preview
+      api_key: os.environ/AZURE_AI_API_KEY
+  - model_name: REMOVE-OR-RENAME-1
+    litellm_params:
+      model: azure/responses/REMOVE-OR-RENAME-1
+      api_base: os.environ/AZURE_OPENAI_BASE
+      api_version: preview
+      api_key: os.environ/AZURE_AI_API_KEY
+  - model_name: REMOVE-OR-RENAME-2
+    litellm_params:
+      model: azure/responses/REMOVE-OR-RENAME-2
+      api_base: os.environ/AZURE_OPENAI_BASE
+      api_version: preview
+      api_key: os.environ/AZURE_AI_API_KEY
+
+  # ---- Other providers (chat completions on the Foundry Models endpoint) ----
+  - model_name: REMOVE-OR-RENAME-3
+    litellm_params:
+      model: azure_ai/REMOVE-OR-RENAME-3
       api_base: os.environ/AZURE_AI_API_BASE
       api_key: os.environ/AZURE_AI_API_KEY
-  - model_name: gpt-5-mini
+  - model_name: kimi-k2
     litellm_params:
-      model: azure_ai/gpt-5-mini
+      model: azure_ai/kimi-deployment-name
       api_base: os.environ/AZURE_AI_API_BASE
       api_key: os.environ/AZURE_AI_API_KEY
-  - model_name: gpt-5-codex
-    litellm_params:
-      model: azure_ai/gpt-5-codex
-      api_base: os.environ/AZURE_AI_API_BASE
-      api_key: os.environ/AZURE_AI_API_KEY
-  # Fallback pattern if a deployment only answers on the Azure OpenAI host:
-  # - model_name: gpt-5
-  #   litellm_params:
-  #     model: azure/gpt-5                       # azure/<deployment>
-  #     api_base: https://<resource>.openai.azure.com
-  #     api_version: "2025-04-01-preview"
-  #     api_key: os.environ/AZURE_AI_API_KEY
 
 litellm_settings:
   drop_params: true            # silently drop Anthropic-only fields for non-Claude upstreams
