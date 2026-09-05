@@ -96,7 +96,7 @@ pins() {  # pins <profile>
 
 pick_profile() {  # --profile X | FOUNDRY_PROFILE | interactive gum | anthropic
   if [ -n "${FOUNDRY_PROFILE:-}" ]; then printf '%s' "$FOUNDRY_PROFILE"; return; fi
-  if [ -t 0 ] && [ -t 1 ] && command -v gum >/dev/null; then
+  if [ -t 0 ] && [ -t 2 ] && command -v gum >/dev/null; then   # stdout is a pipe here: $(pick_profile)
     gum choose --header "foundry_claude — model profile" \
       --cursor.foreground 3 --header.foreground 6 \
       "anthropic  (opus→claude-opus-5, sonnet→claude-sonnet-5, haiku→claude-haiku-4-5, fable→claude-fable-5-1)" \
