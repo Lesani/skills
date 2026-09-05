@@ -48,7 +48,7 @@ You need the resource name and an API key. Leave the key empty in the profile an
 Probe the endpoint before pinning anything. A model that returns a message here is safe to pin:
 
 ```bash
-for m in claude-opus-5 claude-sonnet-5 claude-haiku-4-5 claude-fable-5; do
+for m in claude-opus-5 claude-sonnet-5 claude-haiku-4-5 claude-fable-5-1; do
   r=$(curl -s -X POST "https://<RESOURCE>.services.ai.azure.com/anthropic/v1/messages" \
     -H "x-api-key: $ANTHROPIC_FOUNDRY_API_KEY" \
     -H "anthropic-version: 2023-06-01" \
@@ -299,7 +299,8 @@ foundry_claude proxy probe          # lists deployments, sends a request through
 
 Rules that came out of building it:
 
-- **Pin only what `probe` returns `[OK]`.** The name after `azure_ai/` is the Foundry *deployment name*, not the catalogue name, and Foundry has no startup model check — a wrong pin fails at the first prompt.
+- **Pin only what `probe` returns `[OK]`.** The name after `azure_ai/` is the Foundry *deployment name*, not the catalogue name, and Foundry has no startup model check — a wrong pin fails at the first prompt. The deployment list comes from `https://<resource>.openai.azure.com/openai/deployments?api-version=2023-03-15-preview` with the `api-key` header; the `/openai/v1/models` endpoint lists the catalogue, not your deployments.
+- **`FOUNDRY_RESOURCE` is the resource, not the project.** A Foundry project endpoint looks like `https://<resource>.services.ai.azure.com/api/projects/<project>`; the value you want is `<resource>`. The script also accepts the full host. A project name in that field shows up as NXDOMAIN on the first request.
 - **Set `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1` on the proxy path.** A session can switch to a non-Claude upstream at any time, and those reject the beta tool-schema fields with `400`. `drop_params: true` in `litellm_settings` covers the body fields LiteLLM can't translate.
 - **Non-Claude models never show in the `/model` picker.** Gateway model discovery keeps only ids containing `claude` or `anthropic`. Type `/model gpt-5`; it works.
 - **Bearer, not x-api-key.** LiteLLM reads `Authorization: Bearer <master key>`, so the wrapper sets `ANTHROPIC_AUTH_TOKEN`, which also takes precedence over a saved claude.ai login without a prompt. A wrong token gets `400` from LiteLLM, not `401`.
