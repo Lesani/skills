@@ -77,7 +77,7 @@ Skills for daily code work.
 - **[merge-down](./skills/engineering/merge-down/SKILL.md)** — Merge feature branches and worktrees down into one integration branch, resolve the usual conflicts, then clean up.
 - **[research](./skills/engineering/research/SKILL.md)** — Investigate a question against high-trust primary sources and capture the findings as a Markdown file in the repo.
 - **[setup-matt-pocock-skills](./skills/engineering/setup-matt-pocock-skills/SKILL.md)** — Scaffold the per-repo config (issue tracker, triage label vocabulary, domain doc layout) that the other engineering skills consume. Run once per repo.
-- **[setup-foundry-claude](./skills/engineering/setup-foundry-claude/SKILL.md)** — PowerShell wrapper that runs Claude Code against Azure AI Foundry without leaking provider config into the rest of the shell session.
+- **[setup-foundry-claude](./skills/engineering/setup-foundry-claude/SKILL.md)** — PowerShell/bash wrapper that runs Claude Code against Azure AI Foundry without leaking provider config into the shell session; optional LiteLLM proxy for non-Anthropic models on the same resource.
 - **[tdd](./skills/engineering/tdd/SKILL.md)** — Test-driven development with a red-green-refactor loop. Builds features or fixes bugs one vertical slice at a time.
 - **[to-issues](./skills/engineering/to-issues/SKILL.md)** — Break any plan, spec, or PRD into independently-grabbable GitHub issues using vertical slices.
 - **[to-prd](./skills/engineering/to-prd/SKILL.md)** — Turn the current conversation context into a PRD and submit it as a GitHub issue.

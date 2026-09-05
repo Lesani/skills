@@ -3,6 +3,14 @@
   "lines": [
     [
       {
+        "id": "4b22189e-1e28-42dc-a1b4-9a5ce66b7548",
+        "type": "custom-command",
+        "commandPath": "[ -n \"$CLAUDE_PROVIDER_BADGE\" ] && echo \"$CLAUDE_PROVIDER_BADGE\" || true",
+        "timeout": 3000,
+        "bold": true,
+        "color": "yellow"
+      },
+      {
         "id": "1",
         "type": "model",
         "color": "cyan"
@@ -66,14 +74,14 @@
   "powerline": {
     "enabled": true,
     "separators": [
-      ""
+      "\ue0b0"
     ],
     "separatorInvertBackground": [
       false
     ],
     "startCaps": [],
     "endCaps": [
-      ""
+      "\ue0b0"
     ],
     "theme": "nord",
     "autoAlign": false,

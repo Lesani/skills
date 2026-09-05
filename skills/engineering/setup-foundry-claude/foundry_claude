@@ -1,0 +1,151 @@
+#!/bin/bash
+# foundry_claude — Claude Code against Azure AI Foundry, every model on Foundry.
+#
+#   foundry_claude [claude args...]        via local LiteLLM proxy (Claude + other providers)
+#   foundry_claude --direct [claude args]  straight to Foundry's Anthropic endpoint (Claude only)
+#   foundry_claude proxy up|down|status|logs|probe
+#
+# Nothing is exported into the calling shell: the child environment is built with
+# `env -u ...`, so a plain `claude` afterwards still uses the claude.ai subscription.
+set -euo pipefail
+
+CONF_DIR="${FOUNDRY_CLAUDE_DIR:-$HOME/.config/foundry-claude}"
+ENV_FILE="$CONF_DIR/.env"
+PROXY_URL="http://127.0.0.1:4000"
+
+# Every variable any claude wrapper touches. All are unset for the child before
+# this run's config is applied, so wrappers can never inherit each other's state.
+CLAUDE_ENV_KEYS=(
+  ANTHROPIC_BASE_URL ANTHROPIC_AUTH_TOKEN ANTHROPIC_API_KEY ANTHROPIC_CUSTOM_HEADERS
+  API_TIMEOUT_MS
+  CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS
+  CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY
+  CLAUDE_CODE_USE_FOUNDRY ANTHROPIC_FOUNDRY_API_KEY ANTHROPIC_FOUNDRY_AUTH_TOKEN
+  ANTHROPIC_FOUNDRY_RESOURCE ANTHROPIC_FOUNDRY_BASE_URL
+  ANTHROPIC_MODEL ANTHROPIC_SMALL_FAST_MODEL
+  ANTHROPIC_DEFAULT_OPUS_MODEL ANTHROPIC_DEFAULT_SONNET_MODEL
+  ANTHROPIC_DEFAULT_HAIKU_MODEL ANTHROPIC_DEFAULT_FABLE_MODEL
+  CLAUDE_PROVIDER_BADGE
+)
+
+die() { printf 'foundry_claude: %s\n' "$*" >&2; exit 1; }
+
+load_env() {
+  [ -r "$ENV_FILE" ] || die "missing $ENV_FILE"
+  # shellcheck disable=SC1090
+  set -a; . "$ENV_FILE"; set +a
+  [ -n "${LITELLM_MASTER_KEY:-}" ] || die "LITELLM_MASTER_KEY is empty in $ENV_FILE"
+}
+
+need_creds() {
+  [ -n "${FOUNDRY_RESOURCE:-}" ] && [ -n "${AZURE_AI_API_KEY:-}" ] \
+    || die "FOUNDRY_RESOURCE / AZURE_AI_API_KEY not set — edit $ENV_FILE"
+}
+
+dc() { sudo -n docker compose --project-directory "$CONF_DIR" -f "$CONF_DIR/compose.yaml" "$@"; }
+
+proxy_up() {
+  # Idempotent; docker.socket is socket-activated so this also starts the daemon.
+  dc up -d --wait --quiet-pull >/dev/null 2>&1 || { dc up -d --wait; }
+}
+
+claude_bin() {
+  local c
+  c=$(command -v claude 2>/dev/null || true)
+  [ -n "$c" ] || c="$HOME/.local/bin/claude"
+  [ -x "$c" ] || die "claude not found on PATH"
+  printf '%s' "$c"
+}
+
+# Pinned aliases; override per model in .env with FOUNDRY_{OPUS,SONNET,HAIKU,FABLE}_MODEL.
+pins() {
+  printf '%s\n' \
+    "ANTHROPIC_DEFAULT_OPUS_MODEL=${FOUNDRY_OPUS_MODEL:-claude-opus-5}" \
+    "ANTHROPIC_DEFAULT_SONNET_MODEL=${FOUNDRY_SONNET_MODEL:-claude-sonnet-5}" \
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL=${FOUNDRY_HAIKU_MODEL:-claude-haiku-4-5}" \
+    "ANTHROPIC_DEFAULT_FABLE_MODEL=${FOUNDRY_FABLE_MODEL:-claude-fable-5}"
+}
+
+run_claude() {  # run_claude VAR=VAL ... -- [claude args]
+  local -a scrub=() config=()
+  local k
+  for k in "${CLAUDE_ENV_KEYS[@]}"; do scrub+=(-u "$k"); done
+  while [ "$#" -gt 0 ] && [ "$1" != "--" ]; do config+=("$1"); shift; done
+  [ "$#" -gt 0 ] && shift
+  exec env "${scrub[@]}" "${config[@]}" "$(claude_bin)" "$@"
+}
+
+probe() {
+  need_creds
+  proxy_up
+  local res="$FOUNDRY_RESOURCE"
+  echo "== Deployments reported by the resource (best effort) =="
+  local host json
+  for host in "https://$res.services.ai.azure.com" "https://$res.openai.azure.com"; do
+    json=$(curl -s -m 15 -H "api-key: $AZURE_AI_API_KEY" \
+      "$host/openai/deployments?api-version=2023-03-15-preview" || true)
+    if printf '%s' "$json" | python3 -c 'import sys,json; d=json.load(sys.stdin)["data"]; print("\n".join(sorted(f"  {x[\"id\"]}  ({x.get(\"model\",\"?\")})" for x in d)))' 2>/dev/null; then
+      echo "  (from $host)"; break
+    fi
+  done
+  echo
+  echo "== Every model_name in litellm.yaml, through the proxy =="
+  local m r
+  for m in $(sed -n 's/^ *- model_name: *//p' "$CONF_DIR/litellm.yaml"); do
+    r=$(curl -s -m 60 -X POST "$PROXY_URL/v1/messages" \
+      -H "Authorization: Bearer $LITELLM_MASTER_KEY" \
+      -H "anthropic-version: 2023-06-01" -H "content-type: application/json" \
+      -d "{\"model\":\"$m\",\"max_tokens\":8,\"messages\":[{\"role\":\"user\",\"content\":\"Say OK\"}]}" || true)
+    if printf '%s' "$r" | command grep -q '"type": *"message"'; then
+      printf '  [OK]   %s\n' "$m"
+    else
+      printf '  [FAIL] %s  %s\n' "$m" "$(printf '%s' "$r" | python3 -c 'import sys,json
+try:
+  e=json.load(sys.stdin); e=e.get("error",e); print(str(e.get("message",e))[:160])
+except Exception: print(sys.stdin.read()[:160])' 2>/dev/null)"
+    fi
+  done
+  echo
+  echo "Pin only [OK] entries. Aliases: opus/sonnet/haiku/fable -> see \`pins\` in $(realpath "$0")."
+}
+
+main() {
+  case "${1:-}" in
+    proxy)
+      load_env
+      case "${2:-}" in
+        up)     proxy_up; echo "proxy listening on $PROXY_URL" ;;
+        down)   dc down ;;
+        status) dc ps ;;
+        logs)   dc logs -f --tail=100 ;;
+        probe)  probe ;;
+        *)      die "usage: foundry_claude proxy up|down|status|logs|probe" ;;
+      esac
+      ;;
+    --direct)
+      shift; load_env; need_creds
+      mapfile -t p < <(pins)
+      run_claude \
+        CLAUDE_CODE_USE_FOUNDRY=1 \
+        ANTHROPIC_FOUNDRY_RESOURCE="$FOUNDRY_RESOURCE" \
+        ANTHROPIC_FOUNDRY_API_KEY="$AZURE_AI_API_KEY" \
+        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        CLAUDE_PROVIDER_BADGE="FOUNDRY" \
+        "${p[@]}" -- "$@"
+      ;;
+    *)
+      load_env; need_creds; proxy_up
+      mapfile -t p < <(pins)
+      # Experimental betas off: a session can switch to a non-Claude model at any
+      # time, and those upstreams reject the beta tool-schema fields with 400.
+      run_claude \
+        ANTHROPIC_BASE_URL="$PROXY_URL" \
+        ANTHROPIC_AUTH_TOKEN="$LITELLM_MASTER_KEY" \
+        CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+        CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1 \
+        CLAUDE_PROVIDER_BADGE="FOUNDRY/LITELLM" \
+        "${p[@]}" -- "$@"
+      ;;
+  esac
+}
+main "$@"

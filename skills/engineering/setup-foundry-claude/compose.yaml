@@ -1,0 +1,22 @@
+# LiteLLM proxy: Claude Code speaks Anthropic Messages to 127.0.0.1:4000,
+# LiteLLM translates per model and forwards everything to the Foundry resource.
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: foundry-litellm
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4000:4000"
+    env_file: .env
+    environment:
+      AZURE_AI_API_BASE: https://${FOUNDRY_RESOURCE}.services.ai.azure.com
+      AZURE_AI_ANTHROPIC_BASE: https://${FOUNDRY_RESOURCE}.services.ai.azure.com/anthropic
+      LITELLM_LOG: WARNING
+    volumes:
+      - ./litellm.yaml:/app/config.yaml:ro
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness').status==200 else 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 20

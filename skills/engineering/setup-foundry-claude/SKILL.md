@@ -1,6 +1,6 @@
 ---
 name: setup-foundry-claude
-description: Set up a shell wrapper that launches Claude Code against Azure AI Foundry without leaking provider config into the rest of the shell session, pin the model aliases to current models, and add a ccstatusline badge showing when an override endpoint is active. Covers PowerShell (Windows) and bash/zsh (Linux/macOS). Use when Claude Code should run against Foundry, when `opus`/`sonnet` resolve to older models than expected, or when a provider wrapper contaminates later `claude` runs in the same terminal.
+description: Set up a shell wrapper that launches Claude Code against Azure AI Foundry without leaking provider config into the rest of the shell session, pin the model aliases to current models, and add a ccstatusline badge showing when an override endpoint is active. Covers PowerShell (Windows) and bash/zsh (Linux/macOS), plus an optional LiteLLM proxy so the same wrapper can run non-Anthropic models (GPT etc.) hosted on the Foundry resource, and a desktop launcher entry. Use when Claude Code should run against Foundry, when `opus`/`sonnet` resolve to older models than expected, or when a provider wrapper contaminates later `claude` runs in the same terminal.
 ---
 
 # Foundry Wrapper for Claude Code
@@ -11,6 +11,7 @@ description: Set up a shell wrapper that launches Claude Code against Azure AI F
 - **`Invoke-Claude`** / **`claude_run`** — a helper that scopes provider env vars to a single run instead of the whole shell
 - **Model alias pinning** so `opus`/`sonnet`/`haiku`/`fable` resolve to current models
 - **A ccstatusline badge** that appears only when an override endpoint is in use
+- **Optional: other providers on the same resource** — a loopback LiteLLM proxy translating Anthropic Messages for GPT-class deployments, so `/model gpt-5` works inside one Claude Code session (step 7)
 
 Each step below gives both a **PowerShell (Windows)** and a **bash / zsh (Linux, macOS)** variant. Do only the one for your shell.
 
@@ -272,6 +273,55 @@ echo "AFTER:  [$CLAUDE_CODE_USE_FOUNDRY]"
 - [ ] Status line shows the badge under `foundry_claude` and hides it otherwise
 
 To confirm which model a subagent really used, ask it directly — the Agent tool result echoes only the alias you passed, not the resolved ID.
+
+### 7. Optional: other providers through a LiteLLM proxy (bash)
+
+Claude Code speaks only the Anthropic Messages format. To use GPT-class or other
+deployments on the same Foundry resource, put a LiteLLM proxy on loopback and
+point Claude Code at it with `ANTHROPIC_BASE_URL` + `ANTHROPIC_AUTH_TOKEN`.
+Claude deployments go through it too, so one session can switch models freely.
+
+Bundled next to this file, ready to copy into `~/.config/foundry-claude/`:
+
+| File | Role |
+|---|---|
+| [`foundry_claude`](./foundry_claude) | the wrapper as a **script** on `PATH` (a function can't be called from a desktop launcher); `--direct` bypasses the proxy, `proxy up\|down\|status\|logs\|probe` manages it |
+| [`compose.yaml`](./compose.yaml) | `ghcr.io/berriai/litellm` bound to `127.0.0.1:4000`, healthcheck, restart policy |
+| [`litellm.yaml`](./litellm.yaml) | model catalogue: `claude-*` → `azure_ai/<id>` on the `/anthropic` base, others → `azure_ai/<deployment>` on the resource root |
+| [`env.example`](./env.example) | resource, key, generated master key — `chmod 600`, never committed |
+
+```bash
+mkdir -p ~/.config/foundry-claude && cp compose.yaml litellm.yaml ~/.config/foundry-claude/
+cp env.example ~/.config/foundry-claude/.env && chmod 600 ~/.config/foundry-claude/.env   # then fill it in
+install -m 755 foundry_claude ~/.local/bin/foundry_claude
+foundry_claude proxy probe          # lists deployments, sends a request through every catalogue entry
+```
+
+Rules that came out of building it:
+
+- **Pin only what `probe` returns `[OK]`.** The name after `azure_ai/` is the Foundry *deployment name*, not the catalogue name, and Foundry has no startup model check — a wrong pin fails at the first prompt.
+- **Set `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1` on the proxy path.** A session can switch to a non-Claude upstream at any time, and those reject the beta tool-schema fields with `400`. `drop_params: true` in `litellm_settings` covers the body fields LiteLLM can't translate.
+- **Non-Claude models never show in the `/model` picker.** Gateway model discovery keeps only ids containing `claude` or `anthropic`. Type `/model gpt-5`; it works.
+- **Bearer, not x-api-key.** LiteLLM reads `Authorization: Bearer <master key>`, so the wrapper sets `ANTHROPIC_AUTH_TOKEN`, which also takes precedence over a saved claude.ai login without a prompt. A wrong token gets `400` from LiteLLM, not `401`.
+- **Add every new variable to the scrub list.** The script's `CLAUDE_ENV_KEYS` grew to include `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN`, `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS` and the badge variable — anything missing there is a variable that can leak between wrappers.
+- **Socket-activated docker needs an on-demand starter.** `docker compose up -d --wait` in the wrapper is idempotent and also boots the daemon; nothing has to run at login.
+- Remote Control and voice dictation are off in a gateway session (they need a claude.ai identity).
+
+**Badge**: with two wrappers, key the ccstatusline widget on one variable both set — the bundled script exports `CLAUDE_PROVIDER_BADGE` (`FOUNDRY` or `FOUNDRY/LITELLM`) and the widget is `[ -n "$CLAUDE_PROVIDER_BADGE" ] && echo "$CLAUDE_PROVIDER_BADGE" || true`.
+
+**Launcher entry** (Omarchy / any XDG desktop): a script on `PATH` is all a `.desktop` file needs.
+
+```bash
+omarchy tui install "Foundry Claude" foundry_claude tile https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/claude-ai.png
+# generic: Exec=xdg-terminal-exec --app-id=TUI.tile -e foundry_claude ; add Path=<project dir> to choose the start directory
+```
+
+Verify the proxy path the same way as step 6, then confirm a non-Claude model answers:
+
+```bash
+foundry_claude -p "Reply with only your exact model ID." --model gpt-5
+sudo docker logs foundry-litellm 2>&1 | grep 'POST /v1/messages'   # one line per request with upstream status
+```
 
 ## Notes
 

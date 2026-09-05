@@ -1,0 +1,66 @@
+# Model catalogue for foundry_claude. Every entry is served by the Foundry
+# resource in .env. `model_name` is what you type at /model or --model.
+#
+#   claude-*  -> Foundry's Anthropic endpoint (native Messages API, no translation)
+#   anything else -> Foundry Models inference endpoint (OpenAI-compatible; LiteLLM
+#                    translates Anthropic Messages <-> chat completions)
+#
+# Run `foundry_claude proxy probe` after editing: it lists the deployments the
+# resource serves and sends a 4-token request through every entry below.
+# Keep only what comes back [OK]; a missing deployment fails at first prompt.
+
+model_list:
+  # ---- Claude on Foundry (aliases opus/sonnet/haiku/fable are pinned to these) ----
+  - model_name: claude-opus-5
+    litellm_params:
+      model: azure_ai/claude-opus-5
+      api_base: os.environ/AZURE_AI_ANTHROPIC_BASE
+      api_key: os.environ/AZURE_AI_API_KEY
+  - model_name: claude-sonnet-5
+    litellm_params:
+      model: azure_ai/claude-sonnet-5
+      api_base: os.environ/AZURE_AI_ANTHROPIC_BASE
+      api_key: os.environ/AZURE_AI_API_KEY
+  - model_name: claude-haiku-4-5
+    litellm_params:
+      model: azure_ai/claude-haiku-4-5
+      api_base: os.environ/AZURE_AI_ANTHROPIC_BASE
+      api_key: os.environ/AZURE_AI_API_KEY
+  - model_name: claude-fable-5
+    litellm_params:
+      model: azure_ai/claude-fable-5
+      api_base: os.environ/AZURE_AI_ANTHROPIC_BASE
+      api_key: os.environ/AZURE_AI_API_KEY
+
+  # ---- Other providers on the same Foundry resource ----
+  # The name after azure_ai/ must equal the *deployment name* in Foundry.
+  - model_name: gpt-5
+    litellm_params:
+      model: azure_ai/gpt-5
+      api_base: os.environ/AZURE_AI_API_BASE
+      api_key: os.environ/AZURE_AI_API_KEY
+  - model_name: gpt-5-mini
+    litellm_params:
+      model: azure_ai/gpt-5-mini
+      api_base: os.environ/AZURE_AI_API_BASE
+      api_key: os.environ/AZURE_AI_API_KEY
+  - model_name: gpt-5-codex
+    litellm_params:
+      model: azure_ai/gpt-5-codex
+      api_base: os.environ/AZURE_AI_API_BASE
+      api_key: os.environ/AZURE_AI_API_KEY
+  # Fallback pattern if a deployment only answers on the Azure OpenAI host:
+  # - model_name: gpt-5
+  #   litellm_params:
+  #     model: azure/gpt-5                       # azure/<deployment>
+  #     api_base: https://<resource>.openai.azure.com
+  #     api_version: "2025-04-01-preview"
+  #     api_key: os.environ/AZURE_AI_API_KEY
+
+litellm_settings:
+  drop_params: true            # silently drop Anthropic-only fields for non-Claude upstreams
+  request_timeout: 600
+  set_verbose: false
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
