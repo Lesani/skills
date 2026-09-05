@@ -9,8 +9,8 @@ services:
       - "127.0.0.1:4000:4000"
     env_file: .env
     environment:
-      AZURE_AI_API_BASE: https://${FOUNDRY_RESOURCE}.services.ai.azure.com
-      AZURE_AI_ANTHROPIC_BASE: https://${FOUNDRY_RESOURCE}.services.ai.azure.com/anthropic
+      AZURE_AI_API_BASE: https://${FOUNDRY_HOST}
+      AZURE_AI_ANTHROPIC_BASE: https://${FOUNDRY_HOST}/anthropic
       LITELLM_LOG: WARNING
     volumes:
       - ./litellm.yaml:/app/config.yaml:ro

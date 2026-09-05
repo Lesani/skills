@@ -35,6 +35,11 @@ load_env() {
   # shellcheck disable=SC1090
   set -a; . "$ENV_FILE"; set +a
   [ -n "${LITELLM_MASTER_KEY:-}" ] || die "LITELLM_MASTER_KEY is empty in $ENV_FILE"
+  # FOUNDRY_RESOURCE may be a bare resource name or the full endpoint host/URL
+  # shown under "Endpoints and keys". Normalise to a host and hand it to compose.
+  FOUNDRY_HOST="${FOUNDRY_RESOURCE#https://}"; FOUNDRY_HOST="${FOUNDRY_HOST%%/*}"
+  case "$FOUNDRY_HOST" in *.*) ;; "") ;; *) FOUNDRY_HOST="$FOUNDRY_HOST.services.ai.azure.com" ;; esac
+  printf 'FOUNDRY_HOST=%s\n' "$FOUNDRY_HOST" > "$CONF_DIR/compose.env"
 }
 
 need_creds() {
@@ -42,7 +47,7 @@ need_creds() {
     || die "FOUNDRY_RESOURCE / AZURE_AI_API_KEY not set — edit $ENV_FILE"
 }
 
-dc() { sudo -n docker compose --project-directory "$CONF_DIR" -f "$CONF_DIR/compose.yaml" "$@"; }
+dc() { sudo -n docker compose --project-directory "$CONF_DIR" --env-file "$CONF_DIR/compose.env" -f "$CONF_DIR/compose.yaml" "$@"; }
 
 proxy_up() {
   # Idempotent; docker.socket is socket-activated so this also starts the daemon.
@@ -78,10 +83,11 @@ run_claude() {  # run_claude VAR=VAL ... -- [claude args]
 probe() {
   need_creds
   proxy_up
-  local res="$FOUNDRY_RESOURCE"
+  echo "== Endpoint: https://$FOUNDRY_HOST =="
+  getent hosts "$FOUNDRY_HOST" >/dev/null || die "$FOUNDRY_HOST does not resolve — copy the host from Endpoints and keys"
   echo "== Deployments reported by the resource (best effort) =="
   local host json
-  for host in "https://$res.services.ai.azure.com" "https://$res.openai.azure.com"; do
+  for host in "https://$FOUNDRY_HOST" "https://${FOUNDRY_HOST%%.*}.openai.azure.com"; do
     json=$(curl -s -m 15 -H "api-key: $AZURE_AI_API_KEY" \
       "$host/openai/deployments?api-version=2023-03-15-preview" || true)
     if printf '%s' "$json" | python3 -c 'import sys,json; d=json.load(sys.stdin)["data"]; print("\n".join(sorted(f"  {x[\"id\"]}  ({x.get(\"model\",\"?\")})" for x in d)))' 2>/dev/null; then
@@ -127,7 +133,7 @@ main() {
       mapfile -t p < <(pins)
       run_claude \
         CLAUDE_CODE_USE_FOUNDRY=1 \
-        ANTHROPIC_FOUNDRY_RESOURCE="$FOUNDRY_RESOURCE" \
+        ANTHROPIC_FOUNDRY_BASE_URL="https://$FOUNDRY_HOST/anthropic" \
         ANTHROPIC_FOUNDRY_API_KEY="$AZURE_AI_API_KEY" \
         CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
         CLAUDE_PROVIDER_BADGE="FOUNDRY" \
