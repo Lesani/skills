@@ -23,3 +23,5 @@ Skills for daily code work.
 - **[zoom-out](./zoom-out/SKILL.md)** — Tell the agent to zoom out and give broader context or a higher-level perspective on an unfamiliar section of code.
 - **[prototype](./prototype/SKILL.md)** — Build a throwaway prototype to flush out a design — either a runnable terminal app for state/business-logic questions, or several radically different UI variations toggleable from one route.
 - **[wizard](./wizard/SKILL.md)** — Generate an interactive bash wizard that walks a human through steps only they can perform: credentials, CI secrets, third-party dashboards, one-off migrations.
+
+- **[astra](./astra/SKILL.md)** — Coordinate complex work with Astra designing, Sol planning, and Terra implementing.

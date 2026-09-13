@@ -230,6 +230,10 @@ This is built in to every layer of these skills:
 
 And crucially, [`/improve-codebase-architecture`](./skills/engineering/improve-codebase-architecture/SKILL.md) helps you rescue a codebase that has become a ball of mud. I recommend running it on your codebase once every few days.
 
+### Additional engineering skills
+
+- **[astra](./skills/engineering/astra/SKILL.md)** — Coordinate complex work with Astra designing, Sol planning, and Terra implementing.
+
 ### Summary
 
 Software engineering fundamentals matter more than ever. These skills are my best effort at condensing these fundamentals into repeatable practices, to help you ship the best apps of your career. Enjoy.

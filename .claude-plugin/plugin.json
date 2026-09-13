@@ -18,6 +18,7 @@
     "writing"
   ],
   "skills": [
+    "./skills/engineering/astra",
     "./skills/engineering/codebase-design",
     "./skills/engineering/code-review",
     "./skills/engineering/diagnose",

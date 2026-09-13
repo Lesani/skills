@@ -1,0 +1,4 @@
+interface:
+  display_name: "Astra"
+  short_description: "Tiered planning and implementation delivery"
+  default_prompt: "Use $astra to design, plan, implement, and review this non-trivial task."
