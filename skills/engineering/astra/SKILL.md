@@ -1,124 +1,117 @@
 ---
 name: astra
-description: Coordinate complex work with Astra designing, Sol planning, and Terra implementing.
+description: Coordinate complex work with Astra designing and reviewing, and Sol agents planning and implementing whole feature slices that are tested as they are built.
 ---
 
 # Astra
 
-## Rough planning — Astra
+Astra (the parent) designs, decides, reviews and integrates. Sol agents plan
+and implement. Work moves in **feature slices**, and each slice is built and
+tested before the next one starts. Testing is how problems are found, so it
+runs from the first slice. It is not a gate saved for the end.
 
-Inspect the relevant code and project instructions. Decide the architecture,
-interfaces, scope, and acceptance criteria. Record the binding design and split
-the work into independently owned areas.
+## Models
 
-## Fine planning — Sol
+Before the first dispatch, check the live model registry once. Select the
+latest available Sol for planners, implementers and reviewers, unless the
+project or owner names another model. Set `model` explicitly on every spawn,
+and keep the selection fixed for the run. If a model is unavailable, report
+it. Do not substitute another.
 
-Split multi-topic work before the first delegation. Give each Sol agent one
-cohesive topic or subsystem, not the entire sprint or backlog. For example,
-planner controls, navigation guidance, and content/localization get separate
-planning tasks. Each brief includes only its issue subset, relevant entry
-points, shared contracts, ownership boundaries, and expected plan artifact.
-Astra owns cross-topic synthesis; do not make every planner rediscover the
-whole repository. Sequence dependent topics and assign shared files explicitly.
+Spawn with the harness's own delegation tool: Codex
+`collaboration.spawn_agent` (explicit `model`, `fork_turns: "none"`), or the
+pi `subagent` tool (explicit `model`, fresh context). Children do not spawn
+further agents.
 
-Delegate to `gpt-5.6-sol` using `collaboration.spawn_agent` with an explicit
-`model` and `fork_turns: "none"`; full-history forks cannot override the model.
+## 1. Design — Astra
 
-Provide the task, workspace, relevant instructions, binding design, key files,
-and ownership boundaries. Request an ordered, file-specific plan with concrete
-checks, dependencies, and risks. Sol plans without implementation edits and
-raises contradictions rather than silently changing the design.
+Read the relevant code and project instructions. Decide architecture,
+interfaces, scope and acceptance criteria, and record the binding design.
+Then cut the work into **feature slices**. A slice is one user-visible
+behaviour or one cohesive subsystem change, end to end: code, its tests,
+and its on-device or simulator check. Prefer 2–6 substantial slices. A slice
+should take one agent hours, not minutes. Do not cut a feature into
+file-sized or step-sized leases. Each slice must be testable by itself.
 
-## Plan review — Astra
+Give slices disjoint file ownership. Sequence the dependent ones. Shared
+files are assigned to one slice by name.
 
-Review Sol's plan against the design and related workstreams. Record corrections
-as binding amendments. Give Terra the complete reviewed plan and amendments,
-inline or in a saved document. For a planning-only request, finish here.
+## 2. Plan — Sol (optional per slice)
 
-## Execution ownership and acceptance — Astra
+For a slice whose approach is not obvious, a Sol planner writes an ordered,
+file-specific plan: changes, the **exact tests to add or run**, the device
+or simulator check, and risks. The planner makes no edits, and it raises
+contradictions with the design instead of changing the design. Astra reviews
+the plan and records corrections as amendments. When the design already
+answers how, skip this step: the implementer plans its own slice.
 
-A planning-only request still stops after plan review. Once execution is approved,
-Astra owns the whole approved task through acceptance, not merely agent dispatch.
-Create the project's durable acceptance matrix before implementation: every
-approved issue and observable criterion, required platform/surface checks,
-source-review gate, evidence reference, candidate identity, owner and next action.
-Keep approved scope separate from reported results so omitted work cannot vanish.
-Use the project's sprint contract/validator when available. Do not invent a
-second competing ledger. Native checks cannot be replaced by source tests.
+## 3. Build and test the slice — Sol implementer
 
-States are `pending`, `running`, `pass`, `fail`, `blocked`, and `not_applicable` with an
-explicit rationale. Partial evidence is not a whole-criterion pass. Historical
-build evidence needs a recorded applicability assessment against the current
-candidate; changed behavior requires fresh validation. Scope exceptions and
-rollovers require the owner's recorded decision, not an agent's convenience.
+One Sol implementer owns one slice and makes it work. It does not only write
+the code. Its brief has the design, the reviewed plan, the file ownership
+and the tests. The implementer:
 
-After EVERY child result, reconcile the assigned criteria and then the whole
-matrix. Record omissions, failures, evidence and next actions before dispatching
-repairs/retests. A successful run receipt proves neither criterion acceptance
-nor sprint completion. An empty fleet triggers this reconciliation, not stopping.
-If authorized work remains, continue it. If all remaining paths genuinely need
-new authority or external input, report BLOCKED with the exact decision/input
-needed; keep the task open. Honor an explicit owner pause immediately.
+1. Writes the code and the slice's tests together.
+2. Runs the focused tests for what it touched (the project's test runner,
+   only the affected files) and fixes the failures it finds.
+3. Runs the slice's native or simulator check when the project requires one,
+   or when the slice changes UI or device behaviour. Debug builds on
+   simulators are always allowed for this. Restrictions on "final
+   candidate only" apply to releases and owner test devices, not to
+   simulators.
+4. Reports the changed files, the commands it ran with pass/fail output, the
+   evidence paths and any deviation from the plan.
 
-For each blocker record cause, attempts, authorized alternatives and responsible
-owner/next action. Reconsider parent-imposed temporary restrictions before calling
-something blocked. Routine authorized setup, test data, supported tooling and
-map downloads are engineering work, not renewed permission requests. Never
-relax a real safety, publication or authorization boundary to make tests pass.
+A report with no test output is not finished. Send the agent back for it.
 
-If workers repeatedly omit requirements or exhaust context/budget, diagnose the
-constraint, split bounded deliverables and use a fresh same-role recovery where
-appropriate. Preserve all missing criteria. Do not endlessly resume the same
-oversized context or weaken acceptance to obtain a successful receipt. A scoped
-child contract must match its actual deliverable; the whole-task gate stays with
-the parent. Review evidence rather than just success labels.
+## 4. Review the slice — Astra, immediately
 
-Every milestone update starts with task/sprint INCOMPLETE, BLOCKED or COMPLETE,
-verified issues X/Y (when applicable), outstanding criteria and next action.
-Completion requires accepted required criteria and final integrated checks.
-Owner-approved scope reductions must be reported separately: closing an adjusted
-round does not mean all originally selected work passed. Publication/deployment
-approval remains separate from implementation and test completion.
+When a slice reports, review it before you dispatch the next one:
 
-## Implementation — Terra
+- Read the diff. Rerun the focused tests yourself. Do not trust a green claim.
+- Check the slice against its acceptance criteria. If the project has a
+  sprint contract, update that slice's cells now, once per slice. Do not
+  update them after every message.
+- On a failure, send the same implementer (or a fresh Sol with the failure
+  output) back to fix it, then retest. Fix while the context is warm. Do not
+  queue the failure for the end.
 
-Delegate to `gpt-5.6-terra` with an explicit `model` and `fork_turns: "none"`.
-Provide the reviewed plan, workspace, project instructions, file ownership,
-and required checks. Terra implements, verifies, and reports changes, results,
-and deviations. Design or ownership changes return to Astra for a decision.
+Run independent slices in parallel only when their file ownership is
+disjoint. Otherwise run them in sequence.
 
-Run independent workstreams in parallel only with disjoint ownership and useful
-concurrent work for Astra. Sequence dependencies. Sol and Terra do not spawn
-further agents. Report unavailable models instead of silently substituting them.
+## 5. Integrate and verify — Astra
 
-## Supervision and recovery — Astra
+After the last slice, run the integrated checks on the merged result: the
+full suite (if the project requires one), and the integrated candidate's
+device or simulator checks. This pass confirms the slices still work
+together. It should find little, because each slice was already tested. A
+failure here becomes a fix slice, not a new round of planning.
 
-Do not impose agent or workflow completion deadlines: valid work can take
-hours. Use deadline-free background orchestration and verify harness defaults
-do not introduce an implicit deadline. This does not remove safety deadlines
-for individual shell commands or tools.
+Report against the original approved scope: what passed, with evidence; what
+is still open, and why; and any owner-approved reductions. Publication and
+deployment approvals stay separate from implementation and test completion.
 
-While agents run, schedule an hourly wake for the parent to check progress,
-errors, pending questions, and genuinely stuck work. Keep native completion
-notifications for immediate follow-up. Elapsed time alone is not a reason to
-stop an agent. When no agents remain, reconcile the acceptance matrix first.
-Cancel/pause the hourly wake only after recording completion, an explicit owner
-pause, or a genuine externally blocked handoff. If authorized work remains,
-start the next bounded action; do not treat timer cleanup as task completion.
+## Supervision
 
-If a run fails, preserve its partial evidence, diagnose the failure, and recover
-proactively through the same governed delegation protocol. Resume only a
-resumable child; otherwise label a fresh same-role recovery. Do not silently
-substitute models or execution modes. Do not stop at reporting a recoverable
-failure while the authorized task remains unfinished; ask only when recovery
-requires a genuine owner decision or new authorization.
+Rely on completion notifications. While agents run, keep at most one
+fallback wake (hourly). Delete it as soon as no agents run, or when the owner
+says stop. Never re-create a wake the owner stopped. Elapsed time alone is
+not a reason to kill an agent. Do not set completion deadlines on agents;
+safety timeouts on single commands still apply.
 
-## Integration and verification — Astra
+If an agent fails or runs out of context, keep its partial diff and output.
+Diagnose the cause. Then continue with a fresh Sol on what remains of the
+**same slice**, with the failure in the brief. Do not split the slice into
+smaller and smaller pieces. Ask the owner only for a genuine decision or new
+authority.
 
-Re-read changed files, review critical paths, and verify the integrated result
-with checks appropriate to the change. Follow the project's worktree, commit,
-and deployment rules within the task's authorization. Reconcile every required
-criterion, run the project's fail-closed completion validator where available,
-and verify issue/board/handoff updates before declaring completion. Never
-silently roll unverified work out of scope. Report the outcome and any remaining
-limitations against the original approved scope, not only the last agent's task.
+## Anti-patterns
+
+- Implement everything, test at the end. Each slice is tested when it is built.
+- Micro-leases: many tiny tasks with a bookkeeping step between each one.
+- Chunked reviews: splitting a diff into numbered part files for review. Give
+  one reviewer the whole slice diff instead.
+- Ledgers that grow faster than the code. The acceptance contract records
+  results. It is not the work.
+- Treating a self-created process artifact (a chunk file, a lease, a receipt)
+  as scope that must be closed.
