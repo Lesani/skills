@@ -27,9 +27,11 @@ It runs pi once, without a session, and prints Sol's answer:
   quick question. A review takes minutes, not seconds.
 - The wrapper prints GPT usage before and after on stderr. Note it in your
   report when a run is expensive.
-- Run one Sol call at a time. Two parallel pi runs hung once (no tool call
-  in 30 min). Progress streams to `<out>.log`, one line per tool call; an
-  empty log after a few minutes means a stuck run, not a slow one.
+- Progress streams to `<out>.log`, one line per tool call; an empty log
+  after a few minutes means a stuck run, not a slow one. (Early hangs were
+  pi waiting for EOF on an inherited stdin; the wrapper now passes
+  /dev/null.) Prefer one Sol call at a time anyway: it keeps quota use easy
+  to read.
 - Keep a brief focused: one area, "about 40 tool calls at most", a word
   limit on the report. A whole-plan review in one call timed out at 25 min;
   split by area, each finished in about 3 min.
