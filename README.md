@@ -55,7 +55,7 @@ This fork is tuned for **fully-AFK autonomous execution** end-to-end — the who
 - **`to-prd`** — adds a structured "Decisions Deferred" section that maps 1:1 to HITL slices downstream. Reminder to walk the future slice list before finalizing.
 - **`grill-me`** — explicit goal framing ("lock every decision an autonomous implementer would otherwise ask"), end-of-grill sweep for unresolved decisions.
 - **`improve-codebase-architecture`** — reworked into a read-plan-delegate workflow. The orchestrating session reads the codebase itself and writes committed rough plans (target interface, pseudocode, todos). Delegated opus/sonnet agents implement from those plans.
-- **New skills** — notably `fable` (tiered delegation: the top model decides, opus plans, opus/sonnet implements), `merge-down`, `setup-foundry-claude`, and the `sync-skills` / `update-skills-repo` pair that keeps `~/.claude/skills/` and this repo in sync.
+- **New skills** — notably `fable` (tiered delegation: the top model decides, opus plans, opus/sonnet implements), `merge-down`, `setup-foundry-claude`, and `sync-skills`, which keeps `~/.claude/skills/` and this repo in sync.
 - **Scripts** — `scripts/ste-lint.sh`, a mechanical Simplified-Technical-English checker for any markdown prose artifact.
 
 ## Reference

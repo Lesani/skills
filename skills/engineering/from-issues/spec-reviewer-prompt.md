@@ -40,10 +40,10 @@ Agent tool (general-purpose):
     - Head SHA: [latest commit on the branch from this slice's implementer]
     - Working directory: [absolute path — same worktree the implementer used; do NOT spin up your own]
 
-    ## CRITICAL: Do not trust the report
+    ## Verify the report independently
 
-    The implementer's report may be incomplete, inaccurate, or optimistic. You MUST verify
-    everything independently by reading the code on the branch.
+    The implementer's report may be incomplete, inaccurate, or optimistic. Verify
+    everything yourself by reading the code on the branch.
 
     **Do NOT:**
     - Take their word for what they implemented.

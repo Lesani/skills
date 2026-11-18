@@ -27,7 +27,7 @@ digraph when_to_use {
 ```
 
 **Use this skill when:**
-- The work to do is on an issue tracker (GitHub / Gitea / GitLab / local-markdown).
+- The work to do is on an issue tracker (GitHub / GitLab / local-markdown).
 - Issues have already been broken into vertical slices via `to-issues` (or equivalent) and triaged.
 - You want continuous, autonomous execution of one or more ready issues.
 
@@ -56,7 +56,6 @@ The skill must know how to read and write issues. Check, in order:
 1. `AGENTS.md` or `CLAUDE.md` at repo root for an `## Agent skills` block describing the tracker.
 2. `docs/agents/issue-tracker.md` if it exists.
 3. Heuristics if no config:
-   - `tools/gitea-issue.js` present → Gitea via this CLI (the starshipviewer convention).
    - `gh` CLI available + `git remote` points at GitHub → GitHub.
    - `glab` CLI available + remote points at GitLab → GitLab.
    - `.scratch/` directory present with markdown issues → local-markdown convention.
@@ -282,7 +281,7 @@ The skill's controller (the model running this skill) chooses the model per impl
 - `./implementer-prompt.md` — implementer subagent prompt, populated from issue body.
 - `./spec-reviewer-prompt.md` — spec-compliance review prompt, populated from acceptance criteria.
 - `./code-quality-reviewer-prompt.md` — code quality review prompt, dispatched after spec review passes.
-- `references/issue-tracker-adapters.md` — per-tracker commands (Gitea / GitHub / GitLab / local-markdown) for fetching, commenting, and PR creation.
+- `references/issue-tracker-adapters.md` — per-tracker commands (GitHub / GitLab / local-markdown) for fetching, commenting, and PR creation.
 - `references/orchestration.md` — DAG sequencing details, parallelism heuristics, HITL workflow, failure recovery.
 
 ## Integration with related skills

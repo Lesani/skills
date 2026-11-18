@@ -21,15 +21,17 @@ The orchestrator reviews and verifies.
 - Record decisions where they persist: CONTEXT.md glossary terms for new
   domain language. Write an ADR when a decision is hard to reverse,
   surprising, and a real trade-off.
-- Write a rough-design doc to the scratchpad. Cover, per feature: user
+- Write a rough-design doc into the repo, where the project keeps its design
+  docs. Cover, per feature: user
   model / storage & model changes / architecture / wire protocol & UI /
   (testing approach, if applicable) / implementation order / shared agent constraints.
-- Commit the design docs before you spawn any agents.
+- Commit the rough design and the recorded decisions before you spawn any
+  agents, so every agent reads the same committed text.
 
 ## Phase 2 — Fine planning (opus Plan agents)
 
 - Spawn one Plan agent per independent workstream. Launch them in parallel.
-- Each prompt MUST contain: a pointer to the rough design marked BINDING
+- Each prompt contains: the path to the committed rough design, marked BINDING
   (plan, do not redesign), an explicit key-file list, a per-area summary of
   what to plan, the deliverable format, and the environment constraints.
 - Demand this deliverable format:
@@ -40,7 +42,8 @@ The orchestrator reviews and verifies.
   - backend/frontend ownership split into disjoint file sets
 - Warn planners about known failure modes: variable shadowing in snippets,
   lock/concurrency discipline, prose that contradicts its own snippet.
-- Save each returned plan verbatim to scratchpad `plan-<feature>.md`.
+- Save each returned plan verbatim as `plan-<feature>.md` beside the rough
+  design.
 
 ## Phase 3 — Plan review (you)
 
@@ -57,15 +60,15 @@ The orchestrator reviews and verifies.
   - trivial one-liners → `haiku`
 - Run agents in parallel only with DISJOINT file ownership (e.g. backend
   vs. frontend trees), stated in each prompt.
-- Subagents inherit no CLAUDE.md: every prompt restates the environment
-  rules (relative paths, no `cd` prefix, ASCII-only output, exact venv test
+- Do not rely on a subagent having read CLAUDE.md: every prompt restates the
+  environment rules (relative paths, no `cd` prefix, ASCII-only output, exact venv test
   command, branch rules, files they must not touch).
 - One feature branch per feature. State in the prompt whether agents commit
   their own scope or leave the commits to you — one convention per feature.
 
 ## Phase 5 — Verify and deliver (you)
 
-- Run the FULL test suite yourself. Never trust an agent's green claim.
+- Run the full test suite yourself; an agent's green claim is not evidence.
 - Personally diff-review the critical paths (engine, concurrency, protocol).
 - Merge and push per the project's git workflow.
 - Ask the user to test. Defer CHANGELOG/records until they confirm.
