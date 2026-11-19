@@ -1,11 +1,12 @@
 ---
 name: from-issues
-description: Execute issue-tracker-resident issues end-to-end via subagents — picks the next ready issue (blockers closed, triage clear), runs implementer + spec-review + code-quality-review per SDD, opens a PR, and posts review summaries back to the issue. Use when the user says "work the next issue", "do issue #N", "execute the issues", or wants AFK execution of a triaged backlog. Skip for issues that haven't been triaged or whose blockers aren't closed.
+description: >-
+  Execute issue-tracker-resident issues end-to-end via subagents — picks the next ready issue (blockers closed, triage clear), runs implementer + spec-review + code-quality-review per issue, lands the slices on one feature branch, and posts review summaries back to the issue. Use when the user says "work the next issue", "do issue #N", "execute the issues", or wants AFK execution of a triaged backlog. Skip for issues that haven't been triaged or whose blockers aren't closed.
 ---
 
 # From Issues
 
-Execute work that lives on the issue tracker, one issue at a time, with subagent-driven implementation and review. Wraps the per-task discipline of `superpowers:subagent-driven-development` (fresh implementer + two-stage review) and adds the missing pieces for issue-tracker-resident workflows: blocker-aware DAG sequencing, triage gating, HITL checkpoints, per-issue branches and PRs, and review summaries posted as issue comments.
+Execute work that lives on the issue tracker, one issue at a time, with subagent-driven implementation and review. Wraps the per-task discipline of `superpowers:subagent-driven-development` (fresh implementer + two-stage review) and adds the missing pieces for issue-tracker-resident workflows: blocker-aware DAG sequencing, triage gating, HITL checkpoints, one feature branch per feature, and review summaries posted as issue comments.
 
 ## When to use
 
@@ -131,7 +132,7 @@ The feature branch **tip** is the unified state. The skill ends there. The user 
 
 #### Worktree policy (read this before dispatching anything)
 
-A worktree is a duplicate checkout (gigabytes of disk on this repo). Spin one up **only** to let two or more agents write the filesystem **at the same time**. Never as a default isolation mechanism per agent.
+A worktree is a full second checkout. Spin one up **only** to let two or more agents write the filesystem **at the same time**. Never as a default isolation mechanism per agent.
 
 | Situation | Workspace |
 |---|---|
@@ -140,7 +141,7 @@ A worktree is a duplicate checkout (gigabytes of disk on this repo). Spin one up
 | Spec / quality reviewer for a slice | Same worktree the implementer used — readers don't need their own worktree |
 | Merge / wave-finalize step | Main worktree only |
 
-**Anti-pattern that triggered this rewrite:** invoking the Agent tool with `isolation: "worktree"` for every dispatched agent, including sequential implementers and reviewers. That produces N worktrees for N agents and never merges them, leaving the canonical branch empty. Don't do this. Pass `isolation` only when the wave is genuinely parallel and the agent is one of the K concurrent implementers.
+Pass `isolation: "worktree"` to the Agent tool only when the wave is genuinely parallel and the agent is one of the K concurrent implementers. One worktree per dispatched agent produces N worktrees that are never merged and leaves the canonical branch empty.
 
 #### Wave execution loop
 
